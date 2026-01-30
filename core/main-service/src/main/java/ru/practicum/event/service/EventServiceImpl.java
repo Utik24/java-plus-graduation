@@ -49,6 +49,7 @@ public class EventServiceImpl implements EventService {
     private final UserService userService;
     private final RequestService requestService;
     private final EntityManager entityManager;
+    private final StatsClient statsClient;
 
 
     @Transactional
@@ -80,8 +81,9 @@ public class EventServiceImpl implements EventService {
         if (events.isEmpty()) {
             return new ArrayList<>();
         }
-        Map<Long, Long> idViewsMap = StatsClient.getMapIdViews(events.stream().map(Event::getId).collect(Collectors.toList()));
-
+        Map<Long, Long> idViewsMap = statsClient.getMapIdViews(events.stream()
+                .map(Event::getId)
+                .collect(Collectors.toList()));
 
         return events.stream()
                 .map(e -> EventMapper.toShortDto(e, idViewsMap.getOrDefault(e.getId(), 0L)))
@@ -94,7 +96,7 @@ public class EventServiceImpl implements EventService {
         PageRequest page = PageRequest.of(from / size, size, Sort.by("id").ascending());
 
         List<Event> events = eventJpaRepository.getAllByUser(userId, page);
-        Map<Long, Long> idViewsMap = StatsClient.getMapIdViews(events.stream()
+        Map<Long, Long> idViewsMap = statsClient.getMapIdViews(events.stream()
                 .map(Event::getId)
                 .collect(Collectors.toList()));
 
@@ -108,7 +110,7 @@ public class EventServiceImpl implements EventService {
         if (event == null) {
             throw new NotFoundException(String.format("События с id=%d и initiatorId=%d не найдено", eventId, userId));
         }
-        Map<Long, Long> idViewsMap = StatsClient.getMapIdViews(List.of(event.getId()));
+        Map<Long, Long> idViewsMap = statsClient.getMapIdViews(List.of(event.getId()));
 
         return EventMapper.toFullDto(event, idViewsMap.getOrDefault(event.getId(), 0L));
     }
@@ -118,7 +120,7 @@ public class EventServiceImpl implements EventService {
         Event event = eventJpaRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException(String.format("События с id=%d не найдено", eventId)));
 
-        Map<Long, Long> idViewsMap = StatsClient.getMapIdViews(List.of(event.getId()));
+        Map<Long, Long> idViewsMap = statsClient.getMapIdViews(List.of(event.getId()));
         return EventMapper.toFullDto(event, idViewsMap.getOrDefault(event.getId(), 0L));
     }
 
@@ -133,7 +135,7 @@ public class EventServiceImpl implements EventService {
         endpointHitDto.setTimestamp(LocalDateTime.now().format(TIME_FORMAT));
         endpointHitDto.setUri(request.getRequestURI());
 
-        StatsClient.postHit(endpointHitDto);
+        statsClient.postHit(endpointHitDto);
 
         return eventDto;
     }
@@ -204,7 +206,7 @@ public class EventServiceImpl implements EventService {
         }
 
         eventJpaRepository.save(event);
-        Map<Long, Long> idViewsMap = StatsClient.getMapIdViews(List.of(event.getId()));
+        Map<Long, Long> idViewsMap = statsClient.getMapIdViews(List.of(event.getId()));
 
         Event updatedEvent = eventJpaRepository.findById(event.getId())
                 .orElseThrow(() -> new NotFoundException(String.format("Событие с id=%d не найден", event.getId())));
@@ -286,7 +288,7 @@ public class EventServiceImpl implements EventService {
         }
 
         eventJpaRepository.save(event);
-        Map<Long, Long> idViewsMap = StatsClient.getMapIdViews(List.of(event.getId()));
+        Map<Long, Long> idViewsMap = statsClient.getMapIdViews(List.of(event.getId()));
 
         Event updatedEvent = eventJpaRepository.findById(event.getId())
                 .orElseThrow(() -> new NotFoundException(String.format("Событие с id=%d не найден", event.getId())));
@@ -393,7 +395,7 @@ public class EventServiceImpl implements EventService {
         typedQuery.setMaxResults(size);
         resultEvents = typedQuery.getResultList();
 
-        Map<Long, Long> idViewsMap = StatsClient.getMapIdViews(resultEvents.stream().map(Event::getId).collect(Collectors.toList()));
+        Map<Long, Long> idViewsMap = statsClient.getMapIdViews(resultEvents.stream().map(Event::getId).collect(Collectors.toList()));
 
         return resultEvents.stream()
                 .map(e -> EventMapper.toFullDto(e, idViewsMap.getOrDefault(e.getId(), 0L)))
@@ -472,9 +474,9 @@ public class EventServiceImpl implements EventService {
         endpointHitDto.setTimestamp(LocalDateTime.now().format(TIME_FORMAT));
         endpointHitDto.setUri(request.getRequestURI());
 
-        StatsClient.postHit(endpointHitDto);
+        statsClient.postHit(endpointHitDto);
 
-        Map<Long, Long> idViews = StatsClient.getMapIdViews(resultEvents.stream().map(Event::getId).collect(Collectors.toList()));
+        Map<Long, Long> idViews = statsClient.getMapIdViews(resultEvents.stream().map(Event::getId).collect(Collectors.toList()));
 
         Comparator<EventShortDto> comparator;
         if (sort != null && sort.equals("EVENT_DATE")) {
@@ -498,7 +500,7 @@ public class EventServiceImpl implements EventService {
         if (eventList == null || eventList.isEmpty()) {
             return new HashSet<>();
         }
-        Map<Long, Long> idViews = StatsClient.getMapIdViews(eventList.stream().map(Event::getId).collect(Collectors.toList()));
+        Map<Long, Long> idViews = statsClient.getMapIdViews(eventList.stream().map(Event::getId).collect(Collectors.toList()));
 
         return eventList.stream()
                 .map(e -> EventMapper.toFullDto(e, idViews.getOrDefault(e.getId(), 0L)))
