@@ -1,5 +1,7 @@
 package ru.practicum.compilation.model;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 import ru.practicum.client.StatsClient;
 import ru.practicum.compilation.model.dto.CompilationDto;
 import ru.practicum.compilation.model.dto.NewCompilationDto;
@@ -10,9 +12,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Component
+@RequiredArgsConstructor
 public class CompilationMapper {
 
-    public static CompilationDto toDto(Compilation compilation) {
+    private final StatsClient statsClient;
+
+    public CompilationDto toDto(Compilation compilation) {
         CompilationDto compilationDto = new CompilationDto();
         compilationDto.setId(compilation.getId());
         compilationDto.setPinned(compilation.isPinned());
@@ -22,7 +28,7 @@ public class CompilationMapper {
         if (events == null || events.size() == 0) {
             return compilationDto;
         }
-        Map<Long, Long> idViewsMap = StatsClient.getMapIdViews(events.stream()
+        Map<Long, Long> idViewsMap = statsClient.getMapIdViews(events.stream()
                 .map(Event::getId)
                 .collect(Collectors.toList()));
 
@@ -32,7 +38,7 @@ public class CompilationMapper {
         return compilationDto;
     }
 
-    public static Compilation toEntity(NewCompilationDto newCompilationDto, Set<Event> events) {
+    public Compilation toEntity(NewCompilationDto newCompilationDto, Set<Event> events) {
         Compilation compilation = new Compilation();
         compilation.setTitle(newCompilationDto.getTitle());
         compilation.setEvents(events);

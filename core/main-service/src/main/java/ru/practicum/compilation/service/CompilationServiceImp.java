@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 public class CompilationServiceImp implements CompilationService {
     private final EventService eventService;
     private final CompilationRepository compilationRepository;
+    private final CompilationMapper compilationMapper;
 
     @Override
     public CompilationDto create(NewCompilationDto newCompilationDto) {
@@ -37,7 +38,7 @@ public class CompilationServiceImp implements CompilationService {
             validateNewCompilationDto(newCompilationDto);
             Set<Event> eventSet = getEventsForCompilation(newCompilationDto.getEvents());
             Compilation compilation = createAndSaveCompilation(newCompilationDto, eventSet);
-            return CompilationMapper.toDto(compilation);
+            return compilationMapper.toDto(compilation);
         } catch (DataAccessException e) {
             log.error("Access error", e);
             throw new DataConflictException("Access error");
@@ -76,14 +77,14 @@ public class CompilationServiceImp implements CompilationService {
         }
         compilation.setEvents(eventsSet);
         compilation = compilationRepository.save(compilation);
-        return CompilationMapper.toDto(compilation);
+        return compilationMapper.toDto(compilation);
     }
 
     public List<CompilationDto> getAllComps(boolean pinned, int from, int size) {
         PageRequest page = PageRequest.of(from / size, size, Sort.by("id").ascending());
         List<Compilation> compilations = compilationRepository.findByPinned(pinned, page);
         return compilations.stream()
-                .map(CompilationMapper::toDto)
+                .map(compilationMapper::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -96,7 +97,7 @@ public class CompilationServiceImp implements CompilationService {
 
         Compilation compilation = compilationRepository.findById(compId)
                 .orElseThrow(() -> new NotFoundException(String.format("Compilation with id=%d not found", compId)));
-        return CompilationMapper.toDto(compilation);
+        return compilationMapper.toDto(compilation);
     }
 
     private void validateNewCompilationDto(NewCompilationDto newCompilationDto) {
@@ -117,7 +118,7 @@ public class CompilationServiceImp implements CompilationService {
     }
 
     private Compilation createAndSaveCompilation(NewCompilationDto newCompilationDto, Set<Event> events) {
-        Compilation compilation = CompilationMapper.toEntity(newCompilationDto, events);
+        Compilation compilation = compilationMapper.toEntity(newCompilationDto, events);
         validateCompilationBeforeSave(compilation);
         return compilationRepository.save(compilation);
     }
