@@ -7,7 +7,9 @@ import ru.practicum.event.model.EventParam;
 import ru.practicum.event.model.dto.*;
 import ru.practicum.request.model.dto.RequestDto;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public interface EventService {
@@ -33,4 +35,6 @@ public interface EventService {
     EventFullDto updateAdminEvent(long eventId, UpdateEventAdminRequest adminRequest);
 
     Set<Event> getEventsByIds(Set<Long> eventIds);
+
+    Map<Long, Long> getViewsMapByIds(Collection<Long> eventIds);
 }

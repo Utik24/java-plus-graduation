@@ -14,8 +14,6 @@ import ru.practicum.category.model.Category;
 import ru.practicum.category.model.dto.CategoryDto;
 import ru.practicum.category.model.mapper.CategoryMapper;
 import ru.practicum.category.service.CategoryService;
-import ru.practicum.client.StatsClient;
-import ru.practicum.dto.StatisticsPostResponseDto;
 import ru.practicum.event.model.*;
 import ru.practicum.event.model.dto.*;
 import ru.practicum.event.model.mapper.EventMapper;
@@ -592,5 +590,13 @@ public class EventServiceImpl implements EventService {
                     limit, confirmedRequestsAmount));
         }
         return updateResult;
+    }
+
+    @Override
+    public Map<Long, Long> getViewsMapByIds(Collection<Long> eventIds) {
+        if (eventIds == null || eventIds.isEmpty()) {
+            return Map.of();
+        }
+        return statsClient.getMapIdViews(new ArrayList<>(eventIds));
     }
 }
