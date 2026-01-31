@@ -15,6 +15,7 @@ import ru.practicum.compilation.model.dto.UpdateCompilationRequest;
 import ru.practicum.compilation.repository.CompilationRepository;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.service.EventService;
+import ru.practicum.client.StatsClient;
 import ru.practicum.exception.BadParameterException;
 import ru.practicum.exception.DataConflictException;
 import ru.practicum.exception.NotFoundException;
