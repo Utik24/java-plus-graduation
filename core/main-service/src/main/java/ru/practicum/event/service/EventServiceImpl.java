@@ -16,6 +16,7 @@ import ru.practicum.category.model.mapper.CategoryMapper;
 import ru.practicum.category.service.CategoryService;
 import ru.practicum.event.model.*;
 import ru.practicum.client.StatsClient;
+import ru.practicum.dto.StatisticsPostResponseDto;
 import ru.practicum.event.model.dto.*;
 import ru.practicum.event.model.mapper.EventMapper;
 import ru.practicum.event.repository.EventRepository;
