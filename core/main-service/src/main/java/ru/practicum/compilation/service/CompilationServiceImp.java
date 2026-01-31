@@ -19,9 +19,7 @@ import ru.practicum.exception.BadParameterException;
 import ru.practicum.exception.DataConflictException;
 import ru.practicum.exception.NotFoundException;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -31,6 +29,7 @@ public class CompilationServiceImp implements CompilationService {
     private final EventService eventService;
     private final CompilationRepository compilationRepository;
     private final CompilationMapper compilationMapper;
+    private final StatsClient statsClient;
 
     @Override
     public CompilationDto create(NewCompilationDto newCompilationDto) {
@@ -38,7 +37,7 @@ public class CompilationServiceImp implements CompilationService {
             validateNewCompilationDto(newCompilationDto);
             Set<Event> eventSet = getEventsForCompilation(newCompilationDto.getEvents());
             Compilation compilation = createAndSaveCompilation(newCompilationDto, eventSet);
-            return compilationMapper.toDto(compilation);
+            return mapCompilationWithViews(compilation);
         } catch (DataAccessException e) {
             log.error("Access error", e);
             throw new DataConflictException("Access error");
@@ -77,14 +76,15 @@ public class CompilationServiceImp implements CompilationService {
         }
         compilation.setEvents(eventsSet);
         compilation = compilationRepository.save(compilation);
-        return compilationMapper.toDto(compilation);
+        return mapCompilationWithViews(compilation);
     }
 
     public List<CompilationDto> getAllComps(boolean pinned, int from, int size) {
         PageRequest page = PageRequest.of(from / size, size, Sort.by("id").ascending());
         List<Compilation> compilations = compilationRepository.findByPinned(pinned, page);
+        Map<Long, Long> idViewsMap = getViewsMapForCompilations(compilations);
         return compilations.stream()
-                .map(compilationMapper::toDto)
+                .map(compilation -> compilationMapper.toDto(compilation, idViewsMap))
                 .collect(Collectors.toList());
     }
 
@@ -97,7 +97,7 @@ public class CompilationServiceImp implements CompilationService {
 
         Compilation compilation = compilationRepository.findById(compId)
                 .orElseThrow(() -> new NotFoundException(String.format("Compilation with id=%d not found", compId)));
-        return compilationMapper.toDto(compilation);
+        return mapCompilationWithViews(compilation);
     }
 
     private void validateNewCompilationDto(NewCompilationDto newCompilationDto) {
@@ -127,5 +127,33 @@ public class CompilationServiceImp implements CompilationService {
         if (compilation.getTitle() == null || compilation.getTitle().isBlank()) {
             throw new IllegalArgumentException("Заголовок подборки обязателен");
         }
+    }
+
+    private CompilationDto mapCompilationWithViews(Compilation compilation) {
+        Map<Long, Long> idViewsMap = getViewsMap(compilation.getEvents());
+        return compilationMapper.toDto(compilation, idViewsMap);
+    }
+
+    private Map<Long, Long> getViewsMap(Set<Event> events) {
+        if (events == null || events.isEmpty()) {
+            return Map.of();
+        }
+        return statsClient.getMapIdViews(events.stream()
+                .map(Event::getId)
+                .collect(Collectors.toList()));
+    }
+
+    private Map<Long, Long> getViewsMapForCompilations(List<Compilation> compilations) {
+        List<Long> eventIds = compilations.stream()
+                .map(Compilation::getEvents)
+                .filter(Objects::nonNull)
+                .flatMap(Set::stream)
+                .map(Event::getId)
+                .distinct()
+                .collect(Collectors.toList());
+        if (eventIds.isEmpty()) {
+            return Map.of();
+        }
+        return statsClient.getMapIdViews(eventIds);
     }
 }
