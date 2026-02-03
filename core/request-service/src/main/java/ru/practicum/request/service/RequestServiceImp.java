@@ -74,8 +74,7 @@ public class RequestServiceImp implements RequestService {
         request.setRequesterId(userId);
         request.setEventId(eventId);
         request.setCreated(LocalDateTime.now());
-        if ((eventInfo.getParticipantLimit() == 0) || (!eventInfo.getRequestModeration())) {
-            request.setStatus(RequestStatus.CONFIRMED);
+        if ((eventInfo.getParticipantLimit() == 0) || (!eventInfo.isRequestModeration())) {            request.setStatus(RequestStatus.CONFIRMED);
             incrementConfirmedRequests(eventId, 1);
         } else {
             request.setStatus(RequestStatus.PENDING);
