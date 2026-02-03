@@ -2,6 +2,7 @@ package ru.practicum.event.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.model.dto.EventParticipationInfoDto;
@@ -15,6 +16,7 @@ public class EventInternalController {
     private final EventRepository eventRepository;
 
     @GetMapping("/{eventId}/participation-info")
+    @Transactional(readOnly = true)
     public EventParticipationInfoDto getParticipationInfo(@PathVariable("eventId") Long eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException(String.format("Событие с id=%d не найдено", eventId)));

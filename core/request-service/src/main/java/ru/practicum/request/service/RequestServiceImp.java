@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 
@@ -64,22 +65,22 @@ public class RequestServiceImp implements RequestService {
         if (!"PUBLISHED".equals(eventInfo.getState())) {
             throw new CreateConditionException(String.format("Событие с id = %d не опубликовано", eventId));
         }
+        boolean unlimitedParticipants = eventInfo.getParticipantLimit() == 0;
         /*нельзя участвовать при превышении лимита заявок*/
-        if (eventInfo.getParticipantLimit() != 0) { //если ==0, то кол-во участников неограничено
-            if (eventInfo.getConfirmedRequests() >= eventInfo.getParticipantLimit()) {
-                throw new CreateConditionException(String.format("У события с id = %d достигнут лимит участников %d", eventId, eventInfo.getParticipantLimit()));
-            }
+        if (!unlimitedParticipants && eventInfo.getConfirmedRequests() >= eventInfo.getParticipantLimit()) {
+            throw new CreateConditionException(String.format("У события с id = %d достигнут лимит участников %d", eventId, eventInfo.getParticipantLimit()));
         }
         Request request = new Request();
         request.setRequesterId(userId);
         request.setEventId(eventId);
         request.setCreated(LocalDateTime.now());
-        if ((eventInfo.getParticipantLimit() == 0) || (!eventInfo.isRequestModeration())) {            request.setStatus(RequestStatus.CONFIRMED);
+        boolean autoConfirm = unlimitedParticipants || !eventInfo.isRequestModeration();
+        request.setStatus(autoConfirm ? RequestStatus.CONFIRMED : RequestStatus.PENDING);
+        Request savedRequest = repository.save(request);
+        if (autoConfirm && !unlimitedParticipants) {
             incrementConfirmedRequests(eventId, 1);
-        } else {
-            request.setStatus(RequestStatus.PENDING);
         }
-        return RequestMapper.toRequestDto(repository.save(request));
+        return RequestMapper.toRequestDto(savedRequest);
     }
 
     @Override
