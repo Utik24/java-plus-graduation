@@ -8,7 +8,6 @@ import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.PaginationException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.user.model.User;
-import ru.practicum.user.model.dto.UserDto;
 import ru.practicum.user.model.dto.UserRequest;
 import ru.practicum.user.model.mapper.UserMapper;
 import ru.practicum.user.repository.UserRepository;
@@ -23,7 +22,7 @@ public class UserServiceImp implements UserService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDto addUser(UserRequest userRequest) {
+    public UserRequest addUser(UserRequest userRequest) {
 
         User currentUser = userRepository.getByEmail(userRequest.getEmail());
         if (currentUser != null) {
@@ -34,7 +33,7 @@ public class UserServiceImp implements UserService {
     }
 
     @Override
-    public List<UserDto> getUsers(List<Long> ids, Integer from, Integer size) {
+    public List<UserRequest> getUsers(List<Long> ids, Integer from, Integer size) {
         if (from != null && from < 0) {
             throw new PaginationException("The 'from' parameter must be >= 0");
         }
@@ -68,7 +67,7 @@ public class UserServiceImp implements UserService {
     }
 
     @Override
-    public UserDto getUserById(long userId) {
+    public UserRequest getUserById(long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException(String.format("Пользователь с id=%d не найден", userId)));
 
@@ -76,7 +75,7 @@ public class UserServiceImp implements UserService {
     }
 
     @Override
-    public List<UserDto> getAllUsers(List<Long> ids) {
+    public List<UserRequest> getAllUsers(List<Long> ids) {
         List<User> users; //список пользователей
         if (ids == null || ids.isEmpty()) { //если список id пустой, то Возвращаем пустой списко
             return new ArrayList<>();

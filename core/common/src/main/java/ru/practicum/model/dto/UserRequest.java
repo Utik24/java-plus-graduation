@@ -1,23 +1,18 @@
-package ru.practicum.user.model.dto;
+package ru.practicum.model.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
-@Getter
-@Setter
+@Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UserRequest {
+    long id;
     @NotBlank
-    @Size(min = 2, max = 250)
     String name;
     @Email
-    @NotNull
-    @Size(min = 6, max = 254)
+    @NotBlank
     String email;
 }

@@ -1,9 +1,7 @@
-package ru.practicum.user.model.mapper;
+package ru.practicum.model.mapper;
 
 import ru.practicum.user.model.User;
-import ru.practicum.user.model.dto.UserDto;
 import ru.practicum.user.model.dto.UserRequest;
-import ru.practicum.user.model.dto.UserShortDto;
 
 public class UserMapper {
     public static User toUser(UserRequest userRequest) {
@@ -13,7 +11,7 @@ public class UserMapper {
         return user;
     }
 
-    public static User toUser(UserDto userRequest) {
+    public static User toUser(UserRequest userRequest) {
         User user = new User();
         user.setId(userRequest.getId());
         user.setEmail(userRequest.getEmail());
@@ -21,8 +19,8 @@ public class UserMapper {
         return user;
     }
 
-    public static UserDto toUserDto(User user) {
-        UserDto userDto = new UserDto();
+    public static UserRequest toUserDto(User user) {
+        UserRequest userDto = new UserRequest();
         userDto.setId(user.getId());
         userDto.setEmail(user.getEmail());
         userDto.setName(user.getName());

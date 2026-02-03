@@ -2,7 +2,7 @@ package ru.practicum.user.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.user.model.dto.UserDto;
+import ru.practicum.user.model.dto.UserRequest;
 import ru.practicum.user.service.UserService;
 
 import java.util.List;
@@ -20,12 +20,12 @@ public class UserInternalController {
     }
 
     @GetMapping("/{userId}")
-    public UserDto getById(@PathVariable("userId") Long userId) {
+    public UserRequest getById(@PathVariable("userId") Long userId) {
         return userService.getUserById(userId);
     }
 
     @GetMapping
-    public List<UserDto> getByIds(@RequestParam("ids") List<Long> ids) {
+    public List<UserRequest> getByIds(@RequestParam("ids") List<Long> ids) {
         return userService.getAllUsers(ids);
     }
 }

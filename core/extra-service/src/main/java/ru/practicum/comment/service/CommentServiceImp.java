@@ -8,43 +8,41 @@ import ru.practicum.comment.model.dto.CommentRequest;
 import ru.practicum.comment.model.dto.CommentResponse;
 import ru.practicum.comment.model.mapper.CommentMapper;
 import ru.practicum.comment.repository.CommentRepository;
-import ru.practicum.event.model.Event;
-import ru.practicum.event.repository.EventRepository;
+import ru.practicum.client.EventClient;
+import ru.practicum.client.UserClient;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
-import ru.practicum.user.model.User;
-import ru.practicum.user.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CommentServiceImp implements CommentService {
-    private final UserRepository userRepository;
-    private final EventRepository eventRepository;
+    private final UserClient userClient;
+    private final EventClient eventClient;
     private final CommentRepository commentRepository;
 
 
     @Override
     @Transactional
     public CommentResponse createComment(Long userId, Long eventId, CommentRequest commentRequest) {
-        User user = userRepository.findById(userId).get();
-        if (user == null) {
+        if (!isUserExists(userId)) {
             throw new NotFoundException(String.format("Пользователь с id = %d не найден", userId));
         }
-        Event event = eventRepository.findById(eventId).get();
-        if (event == null) {
+        if (!isEventExists(eventId)) {
             throw new NotFoundException(String.format("Событие с id = %d не найдено", eventId));
         }
 
         Comment comment = new Comment();
         comment.setText(commentRequest.getText());
         comment.setCreated(LocalDateTime.now());
-        comment.setAuthor(user);
-        comment.setEvent(event);
+        comment.setAuthorId(userId);
+        comment.setEventId(eventId);
 
         Comment newComment = commentRepository.save(comment);
         return CommentMapper.toCommentResponse(newComment);
@@ -58,13 +56,11 @@ public class CommentServiceImp implements CommentService {
             throw new NotFoundException(String.format("Комментарий с id = %d не найден", commentId));
         }
 
-        User user = userRepository.findById(userId).get();
-
-        if (user == null) {
+        if (!isUserExists(userId)) {
             throw new NotFoundException(String.format("Пользователь с id = %d не найден", userId));
         }
 
-        if (comment.getAuthor().getId() != userId) {
+        if (!comment.getAuthorId().equals(userId)) {
             throw new ConflictException("Только автор может редактировать комментарий");
         }
         comment.setText(commentRequest.getText());
@@ -74,10 +70,10 @@ public class CommentServiceImp implements CommentService {
 
     @Override
     public List<CommentResponse> getCommentsByEvent(Long eventId) {
-        eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException(String.format("Событие с id = %d не найдено", eventId)));
-
-        return commentRepository.findAllByEvent_IdOrderByCreatedAsc(eventId).stream()
+        if (!isEventExists(eventId)) {
+            throw new NotFoundException(String.format("Событие с id = %d не найдено", eventId));
+        }
+        return commentRepository.findAllByEventIdOrderByCreatedAsc(eventId).stream()
                 .map(CommentMapper::toCommentResponse)
                 .collect(Collectors.toList());
     }
@@ -85,13 +81,13 @@ public class CommentServiceImp implements CommentService {
     @Override
     public CommentResponse getCommentById(Long eventId, Long commentId) {
         // также валидируем существование события (опционально, но полезно для консистентности URL)
-        eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException(String.format("Событие с id = %d не найдено", eventId)));
-
+        if (!isEventExists(eventId)) {
+            throw new NotFoundException(String.format("Событие с id = %d не найдено", eventId));
+        }
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new NotFoundException(String.format("Комментарий с id = %d не найден", commentId)));
 
-        if (!(comment.getEvent().getId() == eventId)) {
+        if (!comment.getEventId().equals(eventId)) {
             throw new NotFoundException(String.format("Комментарий с id = %d не принадлежит указанному событию  с id = %d", commentId, eventId));
         }
 
@@ -105,10 +101,33 @@ public class CommentServiceImp implements CommentService {
                 .orElseThrow(() -> new NotFoundException(String.format("Комментарий с id = %d не найден", commentId)));
 
         // Проверка автора
-        if (!(comment.getAuthor().getId() == userId)) {
+        if (!comment.getAuthorId().equals(userId)) {
             throw new ConflictException("Только автор может удалять комментарий");
         }
 
         commentRepository.deleteById(commentId);
+    }
+
+
+    @Retry(name = "user-service", fallbackMethod = "isUserExistsFallback")
+    @CircuitBreaker(name = "user-service", fallbackMethod = "isUserExistsFallback")
+    private boolean isUserExists(Long userId) {
+        return userClient.existsById(userId);
+    }
+
+    @SuppressWarnings("unused")
+    private boolean isUserExistsFallback(Long userId, Throwable ex) {
+        return false;
+    }
+
+    @Retry(name = "event-service", fallbackMethod = "isEventExistsFallback")
+    @CircuitBreaker(name = "event-service", fallbackMethod = "isEventExistsFallback")
+    private boolean isEventExists(Long eventId) {
+        return eventClient.existsById(eventId);
+    }
+
+    @SuppressWarnings("unused")
+    private boolean isEventExistsFallback(Long eventId, Throwable ex) {
+        return false;
     }
 }

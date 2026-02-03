@@ -7,8 +7,7 @@ import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.FieldDefaults;
-import ru.practicum.event.model.Event;
-import ru.practicum.user.model.User;
+
 
 import java.time.LocalDateTime;
 
@@ -30,11 +29,11 @@ public class Comment {
     @Column(name = "created", columnDefinition = "TIMESTAMP WITHOUT TIME ZONE", nullable = false)
     LocalDateTime created;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "author", nullable = false)
-    User author;
+    @NotNull
+    @Column(name = "author_id", nullable = false)
+    Long authorId;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "event", nullable = false)
-    Event event;
+    @NotNull
+    @Column(name = "event_id", nullable = false)
+    Long eventId;
 }

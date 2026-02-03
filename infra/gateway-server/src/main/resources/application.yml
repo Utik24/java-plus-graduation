@@ -4,38 +4,25 @@ server:
 spring:
   application:
     name: gateway-server
-  config:
-    import: "optional:configserver:"
   cloud:
-    config:
-      discovery:
-        enabled: true
-        service-id: config-server
     gateway:
       routes:
         - id: user-service
-        - uri: lb://user-service
+          uri: lb://user-service
           predicates:
             - Path=/admin/users/**
-                - id: request-service
-                uri: lb://request-service
-                predicates:
-                  - Path=/users/*/requests/**
-                  - id: event-service
-                    uri: lb://event-service
-                    predicates:
-                      - Path=/events/**,/categories/**,/compilations/**,/admin/**,/users/**
-                  - id: extra-service
-                    uri: lb://extra-service
-                    predicates:
-                      - Path=/event/**,/comments/**
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka
-  instance:
-    prefer-ip-address: true
+        - id: request-service
+          uri: lb://request-service
+          predicates:
+            - Path=/users/*/requests/**
+        - id: event-service
+          uri: lb://event-service
+          predicates:
+            - Path=/events/**,/categories/**,/compilations/**,/admin/**,/users/**
+        - id: extra-service
+          uri: lb://extra-service
+          predicates:
+            - Path=/event/**,/comments/**
 management:
   endpoints:
     web:

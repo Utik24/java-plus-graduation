@@ -26,6 +26,19 @@ logging:
     org.springframework.orm.jpa.JpaTransactionManager: DEBUG
     org.zalando.logbook: TRACE
 
+resilience4j:
+  retry:
+    instances:
+      request-service:
+        max-attempts: 3
+        wait-duration: 2s
+  circuitbreaker:
+    instances:
+      request-service:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+
 ---
 spring:
   config:

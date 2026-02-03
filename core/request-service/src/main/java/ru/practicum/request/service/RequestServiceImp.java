@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.client.EventClient;
 import ru.practicum.client.UserClient;
-import ru.practicum.event.model.Event;
 import ru.practicum.event.model.dto.EventParticipationInfoDto;
 import ru.practicum.exception.BadParameterException;
 import ru.practicum.exception.CreateConditionException;
@@ -24,6 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 
 @Service
 @RequiredArgsConstructor
@@ -39,7 +40,7 @@ public class RequestServiceImp implements RequestService {
 
     @Override
     public List<RequestDto> getAll(Long userId) {
-        if (!userClient.existsById(userId)) {
+        if (!isUserExists(userId)) {
             throw new NotFoundException(String.format("User with id = %d not found", userId));
         }
         return repository.findByRequester(userId).stream().map(RequestMapper::toRequestDto).toList();
@@ -47,14 +48,14 @@ public class RequestServiceImp implements RequestService {
 
     @Override
     public RequestDto create(Long userId, Long eventId) {
-        if (!userClient.existsById(userId)) {
+        if (!isUserExists(userId)) {
             throw new NotFoundException(String.format("User with id = %d not found", userId));
         }
         Request duplicatedRequest = requestRepository.findByIdAndRequester(eventId, userId);
         if (duplicatedRequest != null) {
             throw new CreateConditionException(String.format("Запрос от пользователя id = %d на событие c id = %d уже существует", userId, eventId));
         }
-        EventParticipationInfoDto eventInfo = eventClient.getParticipationInfo(eventId);
+        EventParticipationInfoDto eventInfo = getParticipationInfo(eventId);
         /*инициатор события не может добавить запрос на участие в своём событии */
         if (eventInfo.getInitiatorId() == userId) { //если событие существует и создатель совпадает по id с пользователем
             throw new CreateConditionException("Пользователь не может создавать запрос на участие в своем событии");
@@ -75,7 +76,7 @@ public class RequestServiceImp implements RequestService {
         request.setCreated(LocalDateTime.now());
         if ((eventInfo.getParticipantLimit() == 0) || (!eventInfo.getRequestModeration())) {
             request.setStatus(RequestStatus.CONFIRMED);
-            eventClient.incrementConfirmedRequests(eventId, 1);
+            incrementConfirmedRequests(eventId, 1);
         } else {
             request.setStatus(RequestStatus.PENDING);
         }
@@ -84,7 +85,7 @@ public class RequestServiceImp implements RequestService {
 
     @Override
     public RequestDto cancelRequest(Long userId, Long requestId) {
-        if (!userClient.existsById(userId)) {
+        if (!isUserExists(userId)) {
             throw new NotFoundException(String.format("User with id = %d not found", userId));
         }
         Request request = repository.findById(requestId).orElseThrow(() -> new NotFoundException(String.format("Request with id = %d not found", requestId)));
@@ -114,7 +115,7 @@ public class RequestServiceImp implements RequestService {
         if (requestDtoList == null || requestDtoList.isEmpty()) {
             return;
         }
-        eventClient.getParticipationInfo(eventId);
+        getParticipationInfo(eventId);
         Map<Long, Request> existing = requestRepository.findAllById(requestDtoList.stream()
                         .map(RequestDto::getId)
                         .collect(Collectors.toList()))
@@ -137,20 +138,58 @@ public class RequestServiceImp implements RequestService {
 
     @Override
     @Transactional
-    public void updateAll(List<RequestDto> requestDtoList, Event event) {
-        if (event == null) {
+    public void updateAll(List<RequestDto> requestDtoList, Long eventId) {
+        if (eventId == null) {
             throw new NotFoundException("Event is required to update requests");
         }
-        updateEventRequests(event.getId(), requestDtoList);
+        updateEventRequests(eventId, requestDtoList);
     }
 
 
     @Override
     @Transactional
-    public void update(RequestDto prDto, Event event) {
-        if (event == null) {
+    public void update(RequestDto prDto, Long eventId) {
+        if (eventId == null) {
             throw new NotFoundException("Event is required to update request");
         }
-        updateEventRequests(event.getId(), List.of(prDto));
+        updateEventRequests(eventId, List.of(prDto));
+    }
+
+    @Retry(name = "event-service", fallbackMethod = "getParticipationInfoFallback")
+    @CircuitBreaker(name = "event-service", fallbackMethod = "getParticipationInfoFallback")
+    private EventParticipationInfoDto getParticipationInfo(Long eventId) {
+        return eventClient.getParticipationInfo(eventId);
+    }
+
+    @SuppressWarnings("unused")
+    private EventParticipationInfoDto getParticipationInfoFallback(Long eventId, Throwable ex) {
+        EventParticipationInfoDto fallback = new EventParticipationInfoDto();
+        fallback.setInitiatorId(-1L);
+        fallback.setState("CANCELED");
+        fallback.setParticipantLimit(0);
+        fallback.setConfirmedRequests(0);
+        fallback.setRequestModeration(false);
+        return fallback;
+    }
+
+    @Retry(name = "user-service", fallbackMethod = "isUserExistsFallback")
+    @CircuitBreaker(name = "user-service", fallbackMethod = "isUserExistsFallback")
+    private boolean isUserExists(Long userId) {
+        return userClient.existsById(userId);
+    }
+
+    @SuppressWarnings("unused")
+    private boolean isUserExistsFallback(Long userId, Throwable ex) {
+        return false;
+    }
+
+    @Retry(name = "event-service", fallbackMethod = "incrementConfirmedRequestsFallback")
+    @CircuitBreaker(name = "event-service", fallbackMethod = "incrementConfirmedRequestsFallback")
+    private void incrementConfirmedRequests(Long eventId, int delta) {
+        eventClient.incrementConfirmedRequests(eventId, delta);
+    }
+
+    @SuppressWarnings("unused")
+    private void incrementConfirmedRequestsFallback(Long eventId, int delta, Throwable ex) {
     }
 }

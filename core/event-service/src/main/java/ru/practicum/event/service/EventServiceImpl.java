@@ -29,7 +29,9 @@ import ru.practicum.request.model.dto.RequestDto;
 import ru.practicum.client.RequestClient;
 import ru.practicum.user.model.User;
 import ru.practicum.user.model.mapper.UserMapper;
-import ru.practicum.user.service.UserService;
+import ru.practicum.client.UserClient;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -46,8 +48,9 @@ public class EventServiceImpl implements EventService {
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final EventRepository eventJpaRepository;
     private final CategoryService categoryService;
-    private final UserService userService;
-    private final RequestClient requestClient;    private final EntityManager entityManager;
+    private final UserClient userClient;
+    private final RequestClient requestClient;
+    private final EntityManager entityManager;
     private final StatsClient statsClient;
 
 
@@ -60,7 +63,7 @@ public class EventServiceImpl implements EventService {
         }
 
         Category category = CategoryMapper.toCategory(categoryService.getById(newEventDto.getCategory()));
-        User user = UserMapper.toUser(userService.getUserById(userId));
+        User user = UserMapper.toUser(userClient.getById((long) userId));
 
         if (newEventDto.getDescription().trim().isEmpty() || newEventDto.getAnnotation().trim().isEmpty() || newEventDto.getParticipantLimit() < 0) {
             throw new ValidationException("Описание пустое");
@@ -313,7 +316,7 @@ public class EventServiceImpl implements EventService {
         if (event == null) {
             throw new NotFoundException(String.format("События с id=%d и initiatorId=%d не найдено", eventId, userId));
         }
-        return requestClient.getEventRequests(event.getId());
+        return getEventRequests(event.getId());
     }
 
     @Override
@@ -324,7 +327,7 @@ public class EventServiceImpl implements EventService {
             throw new NotFoundException(String.format("События с id=%d и initiatorId=%d не найдено", eventId, userId));
         }
 
-        List<RequestDto> requests = requestClient.getEventRequests(eventId);
+        List<RequestDto> requests = getEventRequests(eventId);
         int limit = event.getParticipantLimit();
 
         if (updateRequest.getStatus() == UpdateRequestState.REJECTED) {
@@ -523,7 +526,7 @@ public class EventServiceImpl implements EventService {
                 throw new CreateConditionException(String.format("Нельзя отклонить уже обработанную заявку id=%d", id));
             }
         }
-        requestClient.updateEventRequests(event.getId(), updateResult.getRejectedRequests());
+        updateEventRequests(event.getId(), updateResult.getRejectedRequests());
         return updateResult;
     }
 
@@ -548,7 +551,7 @@ public class EventServiceImpl implements EventService {
                 throw new CreateConditionException(String.format("Нельзя подтвердить уже обработанную заявку id=%d", id));
             }
         }
-        requestClient.updateEventRequests(event.getId(), updateResult.getConfirmedRequests());
+        updateEventRequests(event.getId(), updateResult.getConfirmedRequests());
         return updateResult;
     }
 
@@ -570,7 +573,7 @@ public class EventServiceImpl implements EventService {
             if (prDto.getStatus().equals(RequestStatus.PENDING)) {
                 if (limitAchieved) {
                     prDto.setStatus(RequestStatus.REJECTED);
-                    requestClient.updateEventRequests(event.getId(), List.of(prDto));
+                    updateEventRequests(event.getId(), List.of(prDto));
                     updateResult.getRejectedRequests().add(prDto);
                 } else {
                     prDto.setStatus(RequestStatus.CONFIRMED);
@@ -583,14 +586,35 @@ public class EventServiceImpl implements EventService {
                 throw new CreateConditionException(String.format("Нельзя подтвердить уже обработанную заявку id=%d", id));
             }
         }
-        requestClient.updateEventRequests(event.getId(), updateResult.getRejectedRequests());
-        requestClient.updateEventRequests(event.getId(), updateResult.getConfirmedRequests());
+        updateEventRequests(event.getId(), updateResult.getRejectedRequests());
+        updateEventRequests(event.getId(), updateResult.getConfirmedRequests());
         if (limitAchieved) {
             throw new CreateConditionException(String.format(
                     "Превышен лимит на кол-во участников. Лимит = %d, кол-во подтвержденных заявок =%d",
                     limit, confirmedRequestsAmount));
         }
         return updateResult;
+    }
+
+    @Retry(name = "request-service", fallbackMethod = "getEventRequestsFallback")
+    @CircuitBreaker(name = "request-service", fallbackMethod = "getEventRequestsFallback")
+    private List<RequestDto> getEventRequests(Long eventId) {
+        return requestClient.getEventRequests(eventId);
+    }
+
+    @SuppressWarnings("unused")
+    private List<RequestDto> getEventRequestsFallback(Long eventId, Throwable ex) {
+        return new ArrayList<>();
+    }
+
+    @Retry(name = "request-service", fallbackMethod = "updateEventRequestsFallback")
+    @CircuitBreaker(name = "request-service", fallbackMethod = "updateEventRequestsFallback")
+    private void updateEventRequests(Long eventId, List<RequestDto> requests) {
+        requestClient.updateEventRequests(eventId, requests);
+    }
+
+    @SuppressWarnings("unused")
+    private void updateEventRequestsFallback(Long eventId, List<RequestDto> requests, Throwable ex) {
     }
 
 }
