@@ -28,7 +28,7 @@ import ru.practicum.request.model.RequestStatus;
 import ru.practicum.request.model.dto.RequestDto;
 import ru.practicum.client.RequestClient;
 import ru.practicum.user.model.User;
-import ru.practicum.user.model.mapper.UserMapper;
+import ru.practicum.user.model.dto.UserRequest;
 import ru.practicum.client.UserClient;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
@@ -63,8 +63,7 @@ public class EventServiceImpl implements EventService {
         }
 
         Category category = CategoryMapper.toCategory(categoryService.getById(newEventDto.getCategory()));
-        User user = UserMapper.toUser(userClient.getById((long) userId));
-        user = entityManager.merge(user);
+        User user = ensureUserExists(userId);
 
         if (newEventDto.getDescription().trim().isEmpty() || newEventDto.getAnnotation().trim().isEmpty() || newEventDto.getParticipantLimit() < 0) {
             throw new ValidationException("Описание пустое");
@@ -73,6 +72,18 @@ public class EventServiceImpl implements EventService {
         Event savedEvent = eventJpaRepository.save(event);
 
         return EventMapper.toFullDto(savedEvent, 0);
+    }
+
+    private User ensureUserExists(long userId) {
+        UserRequest userRequest = userClient.getById(userId);
+        entityManager.createNativeQuery(
+                        "INSERT INTO users (id, name, email) VALUES (:id, :name, :email) "
+                                + "ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email")
+                .setParameter("id", userRequest.getId())
+                .setParameter("name", userRequest.getName())
+                .setParameter("email", userRequest.getEmail())
+                .executeUpdate();
+        return entityManager.getReference(User.class, userRequest.getId());
     }
 
 
