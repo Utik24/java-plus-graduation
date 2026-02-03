@@ -1,6 +1,5 @@
 package ru.practicum.compilation.model;
 
-import org.springframework.stereotype.Component;
 import ru.practicum.compilation.model.dto.CompilationDto;
 import ru.practicum.compilation.model.dto.NewCompilationDto;
 import ru.practicum.event.model.Event;
@@ -10,10 +9,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@Component
 public class CompilationMapper {
 
-    public CompilationDto toDto(Compilation compilation, Map<Long, Long> idViewsMap) {
+    private CompilationMapper() {
+    }
+
+    public static CompilationDto toDto(Compilation compilation, Map<Long, Long> idViewsMap) {
         CompilationDto compilationDto = new CompilationDto();
         compilationDto.setId(compilation.getId());
         compilationDto.setPinned(compilation.isPinned());
@@ -30,7 +31,7 @@ public class CompilationMapper {
         return compilationDto;
     }
 
-    public Compilation toEntity(NewCompilationDto newCompilationDto, Set<Event> events) {
+    public static Compilation toEntity(NewCompilationDto newCompilationDto, Set<Event> events) {
         Compilation compilation = new Compilation();
         compilation.setTitle(newCompilationDto.getTitle());
         compilation.setEvents(events);

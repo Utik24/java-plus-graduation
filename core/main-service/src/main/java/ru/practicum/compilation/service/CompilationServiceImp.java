@@ -29,7 +29,6 @@ import java.util.stream.Collectors;
 public class CompilationServiceImp implements CompilationService {
     private final EventService eventService;
     private final CompilationRepository compilationRepository;
-    private final CompilationMapper compilationMapper;
     private final StatsClient statsClient;
 
     @Override
@@ -85,7 +84,7 @@ public class CompilationServiceImp implements CompilationService {
         List<Compilation> compilations = compilationRepository.findByPinned(pinned, page);
         Map<Long, Long> idViewsMap = getViewsMapForCompilations(compilations);
         return compilations.stream()
-                .map(compilation -> compilationMapper.toDto(compilation, idViewsMap))
+                .map(compilation -> CompilationMapper.toDto(compilation, idViewsMap))
                 .collect(Collectors.toList());
     }
 
@@ -119,7 +118,7 @@ public class CompilationServiceImp implements CompilationService {
     }
 
     private Compilation createAndSaveCompilation(NewCompilationDto newCompilationDto, Set<Event> events) {
-        Compilation compilation = compilationMapper.toEntity(newCompilationDto, events);
+        Compilation compilation = CompilationMapper.toEntity(newCompilationDto, events);
         validateCompilationBeforeSave(compilation);
         return compilationRepository.save(compilation);
     }
@@ -132,7 +131,7 @@ public class CompilationServiceImp implements CompilationService {
 
     private CompilationDto mapCompilationWithViews(Compilation compilation) {
         Map<Long, Long> idViewsMap = getViewsMap(compilation.getEvents());
-        return compilationMapper.toDto(compilation, idViewsMap);
+        return CompilationMapper.toDto(compilation, idViewsMap);
     }
 
     private Map<Long, Long> getViewsMap(Set<Event> events) {

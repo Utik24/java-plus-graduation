@@ -594,11 +594,4 @@ public class EventServiceImpl implements EventService {
         return updateResult;
     }
 
-    @Override
-    public Map<Long, Long> getViewsMapByIds(Collection<Long> eventIds) {
-        if (eventIds == null || eventIds.isEmpty()) {
-            return Map.of();
-        }
-        return statsClient.getMapIdViews(new ArrayList<>(eventIds));
-    }
 }
