@@ -9,6 +9,8 @@ import lombok.experimental.FieldDefaults;
 import ru.practicum.category.model.dto.CategoryDto;
 import ru.practicum.event.model.EventState;
 import ru.practicum.event.model.Location;
+import ru.practicum.user.model.dto.UserShortDto;
+
 
 @Getter
 @Setter
