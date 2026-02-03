@@ -78,7 +78,7 @@ public class EventControllerPrivate {
     @ResponseStatus(HttpStatus.OK)
     public EventRequestStatusUpdateResult updateEventStatus(@PathVariable(name = "userId") @Positive long userId,
                                                            @PathVariable(name = "eventId") @Positive long eventId,
-                                                           @RequestBody EventRequestStatusUpdateRequest statusUpdateRequest) {
+                                                            @Valid @RequestBody EventRequestStatusUpdateRequest statusUpdateRequest) {
         EventRequestStatusUpdateResult updateStatusResult = eventService.updateStatus(userId, eventId, statusUpdateRequest);
         log.info("Обновлен статус события с Id={} пользователя с id={}. Статус = {}", eventId, userId, statusUpdateRequest.getStatus().toString());
         return updateStatusResult;

@@ -1,5 +1,7 @@
 package ru.practicum.event.model.dto;
 
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,6 +15,8 @@ import java.util.List;
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class EventRequestStatusUpdateRequest {
-    List<Integer> requestIds;
+    @NotEmpty
+    List<Long> requestIds;
+    @NotNull
     UpdateRequestState status;
 }

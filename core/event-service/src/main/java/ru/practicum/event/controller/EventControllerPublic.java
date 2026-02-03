@@ -55,7 +55,7 @@ public class EventControllerPublic {
     }
 
     @GetMapping(EVENT_ID_PATH)
-    public EventFullDto getEvent(@PathVariable(name = "eventId") int eventId,
+    public EventFullDto getEvent(@PathVariable(name = "eventId")  @Positive int eventId,
                                                  HttpServletRequest request) {
         log.info("Выполнен запрос получения события с id={}", eventId);
         return eventService.getEvent(eventId, request);
