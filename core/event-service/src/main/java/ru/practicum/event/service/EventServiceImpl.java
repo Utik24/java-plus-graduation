@@ -64,6 +64,7 @@ public class EventServiceImpl implements EventService {
 
         Category category = CategoryMapper.toCategory(categoryService.getById(newEventDto.getCategory()));
         User user = UserMapper.toUser(userClient.getById((long) userId));
+        user = entityManager.merge(user);
 
         if (newEventDto.getDescription().trim().isEmpty() || newEventDto.getAnnotation().trim().isEmpty() || newEventDto.getParticipantLimit() < 0) {
             throw new ValidationException("Описание пустое");
