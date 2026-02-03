@@ -466,10 +466,11 @@ public class EventServiceImpl implements EventService {
             complexPredicate = criteriaBuilder.and(complexPredicate, predicateForPaid);
         }
 
-        if (onlyAvailable != null) {
+        if (onlyAvailable != null && onlyAvailable) {
             Predicate noLimit = criteriaBuilder.equal(eventRoot.get("participantLimit"), 0);
             Predicate hasSlots = criteriaBuilder.lt(eventRoot.get("confirmedRequests"), eventRoot.get("participantLimit"));
             Predicate predicateForOnlyAvailable = criteriaBuilder.or(noLimit, hasSlots);
+            complexPredicate = criteriaBuilder.and(complexPredicate, predicateForOnlyAvailable);
         }
 
         Predicate predicateForPublished = criteriaBuilder.equal(eventRoot.get("state"), EventState.PUBLISHED);
@@ -586,20 +587,17 @@ public class EventServiceImpl implements EventService {
             }
             if (prDto.getStatus().equals(RequestStatus.PENDING)) {
                 if (limitAchieved) {
-                    prDto.setStatus(RequestStatus.REJECTED);
-                    updateResult.getRejectedRequests().add(prDto);
-                } else {
-                    prDto.setStatus(RequestStatus.CONFIRMED);
-                    confirmedRequestsAmount++;
-                    event.setConfirmedRequests(confirmedRequestsAmount);
-                    updateResult.getConfirmedRequests().add(prDto);
+                    throw new CreateConditionException("Лимит участников достигнут");
                 }
+                prDto.setStatus(RequestStatus.CONFIRMED);
+                confirmedRequestsAmount++;
+                event.setConfirmedRequests(confirmedRequestsAmount);
+                updateResult.getConfirmedRequests().add(prDto);
             } else {
                 throw new CreateConditionException(String.format("Нельзя подтвердить уже обработанную заявку id=%d", id));
             }
         }
         eventJpaRepository.save(event);
-        updateEventRequests(event.getId(), updateResult.getRejectedRequests());
         updateEventRequests(event.getId(), updateResult.getConfirmedRequests());
         return updateResult;
     }
