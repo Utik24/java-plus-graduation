@@ -61,7 +61,7 @@ public class RequestServiceImp implements RequestService {
         }
         EventParticipationInfoDto eventInfo = getParticipationInfo(eventId);
         /*инициатор события не может добавить запрос на участие в своём событии */
-        if (eventInfo.getInitiatorId() == userId) { //если событие существует и создатель совпадает по id с пользователем
+        if ((Long.valueOf(eventInfo.getInitiatorId()).equals(userId))) { //если событие существует и создатель совпадает по id с пользователем
             throw new CreateConditionException("Пользователь не может создавать запрос на участие в своем событии");
         }
         /*нельзя участвовать в неопубликованном событии*/
@@ -69,8 +69,9 @@ public class RequestServiceImp implements RequestService {
             throw new CreateConditionException(String.format("Событие с id = %d не опубликовано", eventId));
         }
         boolean unlimitedParticipants = eventInfo.getParticipantLimit() == 0;
+        long confirmedRequests = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
         /*нельзя участвовать при превышении лимита заявок*/
-        if (!unlimitedParticipants && eventInfo.getConfirmedRequests() >= eventInfo.getParticipantLimit()) {
+        if (!unlimitedParticipants && confirmedRequests >= eventInfo.getParticipantLimit()) {
             throw new CreateConditionException(String.format("У события с id = %d достигнут лимит участников %d", eventId, eventInfo.getParticipantLimit()));
         }
         Request request = new Request();
@@ -81,7 +82,11 @@ public class RequestServiceImp implements RequestService {
         request.setStatus(autoConfirm ? RequestStatus.CONFIRMED : RequestStatus.PENDING);
         Request savedRequest = repository.save(request);
         if (autoConfirm && !unlimitedParticipants) {
-            incrementConfirmedRequests(eventId, 1);
+            try {
+                incrementConfirmedRequests(eventId, 1);
+            } catch (RuntimeException ex) {
+                log.warn("Не удалось обновить счетчик подтвержденных заявок для события {}.", eventId, ex);
+            }
         }
         return RequestMapper.toRequestDto(savedRequest);
     }
