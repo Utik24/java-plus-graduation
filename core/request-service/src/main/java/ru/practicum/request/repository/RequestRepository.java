@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.request.model.Request;
+import ru.practicum.request.model.RequestStatus;
 
 import java.util.List;
 
@@ -37,5 +38,7 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
     Request findByEventIdAndRequesterId(Long eventId, Long requesterId);
 
     long countByEventId(Long eventId);
+
+    long countByEventIdAndStatus(Long eventId, RequestStatus status);
 
 }
