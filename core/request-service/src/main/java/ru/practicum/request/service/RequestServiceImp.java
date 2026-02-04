@@ -85,7 +85,11 @@ public class RequestServiceImp implements RequestService {
         request.setStatus(autoConfirm ? RequestStatus.CONFIRMED : RequestStatus.PENDING);
         Request savedRequest = repository.save(request);
         if (autoConfirm && !unlimitedParticipants) {
-            incrementConfirmedRequests(eventId, 1);
+            try {
+                incrementConfirmedRequests(eventId, 1);
+            } catch (RuntimeException ex) {
+                log.warn("Не удалось обновить подтвержденные заявки для события {}.", eventId, ex);
+            }
         }
         return RequestMapper.toRequestDto(savedRequest);
     }
