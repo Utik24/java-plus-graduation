@@ -14,7 +14,7 @@ spring:
         format_sql: true
   datasource:
     driverClassName: org.postgresql.Driver
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:6541/ewmMainDB}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:6541/ewmRequestDB}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:root}
 
