@@ -70,9 +70,6 @@ public class RequestServiceImp implements RequestService {
             throw new ConflictException(String.format("Событие с id = %d не опубликовано", eventId));
         }
         boolean unlimitedParticipants = eventInfo.getParticipantLimit() == 0;
-        if (!unlimitedParticipants && repository.countByEventId(eventId) >= eventInfo.getParticipantLimit()) {
-            throw new ConflictException(String.format("У события с id = %d достигнут лимит участников %d", eventId, eventInfo.getParticipantLimit()));
-        }
         /*нельзя участвовать при превышении лимита заявок*/
         if (!unlimitedParticipants && eventInfo.getConfirmedRequests() >= eventInfo.getParticipantLimit()) {
             throw new ConflictException(String.format("У события с id = %d достигнут лимит участников %d", eventId, eventInfo.getParticipantLimit()));
