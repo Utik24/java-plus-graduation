@@ -3,5 +3,6 @@ CREATE TABLE IF NOT EXISTS requests (
     created TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     event_id BIGINT NOT NULL,
     requester BIGINT NOT NULL,
-    status varchar NOT NULL
+    status varchar NOT NULL,
+    CONSTRAINT uq_request_event_requester UNIQUE (event_id, requester)
 );

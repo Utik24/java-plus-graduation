@@ -2,6 +2,7 @@ package ru.practicum.exception;
 
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.ValidationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -35,7 +36,8 @@ public class ErrorHandler {
         );
     }
 
-    @ExceptionHandler({BadParameterException.class, CreateConditionException.class, DataConflictException.class, ConflictException.class, ConstraintException.class})
+    @ExceptionHandler({BadParameterException.class, CreateConditionException.class, DataConflictException.class,
+            ConflictException.class, ConstraintException.class, DataIntegrityViolationException.class})
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleConstraintException(final RuntimeException e) {
         return new ErrorResponse(

@@ -36,7 +36,6 @@ public class RequestServiceImp implements RequestService {
     private final RequestRepository repository;
     private final EventClient eventClient;
     private final UserClient userClient;
-    private final RequestRepository requestRepository;
 
 
     @Override
@@ -55,7 +54,7 @@ public class RequestServiceImp implements RequestService {
         if (!isUserExists(userId)) {
             throw new NotFoundException(String.format("User with id = %d not found", userId));
         }
-        Request duplicatedRequest = requestRepository.findByEventIdAndRequesterId(eventId, userId);
+        Request duplicatedRequest = repository.findByEventIdAndRequesterId(eventId, userId);
         if (duplicatedRequest != null) {
             throw new CreateConditionException(String.format("Запрос от пользователя id = %d на событие c id = %d уже существует", userId, eventId));
         }
@@ -69,8 +68,12 @@ public class RequestServiceImp implements RequestService {
             throw new CreateConditionException(String.format("Событие с id = %d не опубликовано", eventId));
         }
         boolean unlimitedParticipants = eventInfo.getParticipantLimit() == 0;
+        long confirmedRequests = Math.max(
+                eventInfo.getConfirmedRequests(),
+                repository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED)
+        );
         /*нельзя участвовать при превышении лимита заявок*/
-        if (!unlimitedParticipants && eventInfo.getConfirmedRequests() >= eventInfo.getParticipantLimit()) {
+        if (!unlimitedParticipants && confirmedRequests >= eventInfo.getParticipantLimit()) {
             throw new CreateConditionException(String.format("У события с id = %d достигнут лимит участников %d", eventId, eventInfo.getParticipantLimit()));
         }
         Request request = new Request();
@@ -119,7 +122,7 @@ public class RequestServiceImp implements RequestService {
             return;
         }
         getParticipationInfo(eventId);
-        Map<Long, Request> existing = requestRepository.findAllById(requestDtoList.stream()
+        Map<Long, Request> existing = repository.findAllById(requestDtoList.stream()
                         .map(RequestDto::getId)
                         .collect(Collectors.toList()))
                 .stream()
@@ -136,7 +139,7 @@ public class RequestServiceImp implements RequestService {
                 })
                 .collect(Collectors.toList());
 
-        requestRepository.saveAll(updated);
+        repository.saveAll(updated);
     }
 
     @Override
