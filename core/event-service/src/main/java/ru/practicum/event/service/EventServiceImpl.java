@@ -553,6 +553,10 @@ public class EventServiceImpl implements EventService {
     @Transactional
     protected EventRequestStatusUpdateResult confirmAllRequests(Event event, List<RequestDto> requests, EventRequestStatusUpdateRequest updateRequest) {
         int confirmedRequestsAmount = event.getConfirmedRequests();
+        int limit = event.getParticipantLimit();
+        if (limit > 0 && confirmedRequestsAmount >= limit) {
+            throw new CreateConditionException("Лимит участников достигнут");
+        }
         EventRequestStatusUpdateResult updateResult = new EventRequestStatusUpdateResult();
         Map<Long, RequestDto> prDtoMap = requests.stream()
                 .collect(Collectors.toMap(RequestDto::getId, e -> e));
@@ -562,6 +566,11 @@ public class EventServiceImpl implements EventService {
                 throw new NotFoundException(String.format("Запросу на обновление статуса, не найдено событие с id=%d", id));
             }
             if (prDto.getStatus().equals(RequestStatus.PENDING)) {
+                if (limit > 0 && confirmedRequestsAmount >= limit) {
+                    prDto.setStatus(RequestStatus.REJECTED);
+                    updateResult.getRejectedRequests().add(prDto);
+                    continue;
+                }
                 prDto.setStatus(RequestStatus.CONFIRMED);
                 confirmedRequestsAmount++;
                 event.setConfirmedRequests(confirmedRequestsAmount);
@@ -572,6 +581,7 @@ public class EventServiceImpl implements EventService {
         }
         eventJpaRepository.save(event);
         updateEventRequests(event.getId(), updateResult.getConfirmedRequests());
+        updateEventRequests(event.getId(), updateResult.getRejectedRequests());
         return updateResult;
     }
 
@@ -580,19 +590,22 @@ public class EventServiceImpl implements EventService {
     protected EventRequestStatusUpdateResult confirmRequests(Event event, List<RequestDto> requests, EventRequestStatusUpdateRequest updateRequest) {
         int confirmedRequestsAmount = event.getConfirmedRequests();
         int limit = event.getParticipantLimit();
-        boolean limitAchieved = false;
+        if (confirmedRequestsAmount >= limit) {
+            throw new CreateConditionException("Лимит участников достигнут");
+        }
         EventRequestStatusUpdateResult updateResult = new EventRequestStatusUpdateResult();
         Map<Long, RequestDto> prDtoMap = requests.stream()
                 .collect(Collectors.toMap(RequestDto::getId, e -> e));
         for (long id : updateRequest.getRequestIds()) {
-            limitAchieved = confirmedRequestsAmount >= limit;
             RequestDto prDto = prDtoMap.get(id);
             if (prDto == null) {
                 throw new NotFoundException(String.format("Запросу на обновление статуса, не найдено событие с id=%d", id));
             }
             if (prDto.getStatus().equals(RequestStatus.PENDING)) {
-                if (limitAchieved) {
-                    throw new CreateConditionException("Лимит участников достигнут");
+                if (confirmedRequestsAmount >= limit) {
+                    prDto.setStatus(RequestStatus.REJECTED);
+                    updateResult.getRejectedRequests().add(prDto);
+                    continue;
                 }
                 prDto.setStatus(RequestStatus.CONFIRMED);
                 confirmedRequestsAmount++;
