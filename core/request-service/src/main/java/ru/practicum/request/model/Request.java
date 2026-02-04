@@ -12,14 +12,7 @@ import java.time.LocalDateTime;
 @Setter
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(
-        name = "requests",
-        schema = "public",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uq_request_event_requester",
-                columnNames = {"event_id", "requester"}
-        )
-)
+@Table(name = "requests", schema = "public")
 public class Request {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
