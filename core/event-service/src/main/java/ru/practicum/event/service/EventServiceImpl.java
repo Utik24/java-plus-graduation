@@ -32,6 +32,7 @@ import ru.practicum.user.model.dto.UserRequest;
 import ru.practicum.client.UserClient;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
+import ru.practicum.exception.ConflictException;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -617,6 +618,7 @@ public class EventServiceImpl implements EventService {
         }
         eventJpaRepository.save(event);
         updateEventRequests(event.getId(), updateResult.getConfirmedRequests());
+        updateEventRequests(event.getId(), updateResult.getRejectedRequests());
         return updateResult;
     }
 

@@ -1,7 +1,8 @@
 package ru.practicum.request.service;
 
 import jakarta.persistence.EntityManager;
-import jakarta.validation.ValidationException;import lombok.RequiredArgsConstructor;
+import jakarta.validation.ValidationException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,6 +10,7 @@ import ru.practicum.client.EventClient;
 import ru.practicum.client.UserClient;
 import ru.practicum.event.model.dto.EventParticipationInfoDto;
 import ru.practicum.exception.BadParameterException;
+import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.CreateConditionException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.request.model.Request;
@@ -56,24 +58,24 @@ public class RequestServiceImp implements RequestService {
         }
         Request duplicatedRequest = repository.findByEventIdAndRequesterId(eventId, userId);
         if (duplicatedRequest != null) {
-            throw new CreateConditionException(String.format("Запрос от пользователя id = %d на событие c id = %d уже существует", userId, eventId));
+            throw new ConflictException(String.format("Запрос от пользователя id = %d на событие c id = %d уже существует", userId, eventId));
         }
         EventParticipationInfoDto eventInfo = getParticipationInfo(eventId);
         /*инициатор события не может добавить запрос на участие в своём событии */
         if (eventInfo.getInitiatorId() == userId) { //если событие существует и создатель совпадает по id с пользователем
-            throw new CreateConditionException("Пользователь не может создавать запрос на участие в своем событии");
+            throw new ConflictException("Пользователь не может создавать запрос на участие в своем событии");
         }
         /*нельзя участвовать в неопубликованном событии*/
         if (!"PUBLISHED".equals(eventInfo.getState())) {
-            throw new CreateConditionException(String.format("Событие с id = %d не опубликовано", eventId));
+            throw new ConflictException(String.format("Событие с id = %d не опубликовано", eventId));
         }
         boolean unlimitedParticipants = eventInfo.getParticipantLimit() == 0;
         if (!unlimitedParticipants && repository.countByEventId(eventId) >= eventInfo.getParticipantLimit()) {
-            throw new CreateConditionException(String.format("У события с id = %d достигнут лимит участников %d", eventId, eventInfo.getParticipantLimit()));
+            throw new ConflictException(String.format("У события с id = %d достигнут лимит участников %d", eventId, eventInfo.getParticipantLimit()));
         }
         /*нельзя участвовать при превышении лимита заявок*/
         if (!unlimitedParticipants && eventInfo.getConfirmedRequests() >= eventInfo.getParticipantLimit()) {
-            throw new CreateConditionException(String.format("У события с id = %d достигнут лимит участников %d", eventId, eventInfo.getParticipantLimit()));
+            throw new ConflictException(String.format("У события с id = %d достигнут лимит участников %d", eventId, eventInfo.getParticipantLimit()));
         }
         Request request = new Request();
         request.setRequesterId(userId);
