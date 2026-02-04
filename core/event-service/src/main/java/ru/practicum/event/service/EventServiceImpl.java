@@ -435,12 +435,16 @@ public class EventServiceImpl implements EventService {
         Root<Event> eventRoot = criteriaQuery.from(Event.class);
         criteriaQuery.select(eventRoot);
 
-        Predicate complexPredicate;
-        if (rangeStart != null && rangeEnd != null) {
-            complexPredicate = criteriaBuilder.between(eventRoot.get("eventDate").as(LocalDateTime.class), rangeStart, rangeEnd);
-        } else {
-            complexPredicate = criteriaBuilder.between(eventRoot.get("eventDate").as(LocalDateTime.class), LocalDateTime.now(), LocalDateTime.of(9999, 1, 1, 1, 1, 1));
+        LocalDateTime effectiveRangeStart = rangeStart != null ? rangeStart : LocalDateTime.now();
+        LocalDateTime effectiveRangeEnd = rangeEnd != null ? rangeEnd : LocalDateTime.of(9999, 1, 1, 1, 1, 1);
+        if (rangeStart != null && rangeEnd != null && rangeEnd.isBefore(rangeStart)) {
+            throw new ValidationException("Начало диапазона не может быть позже конца диапазона");
         }
+        Predicate complexPredicate = criteriaBuilder.between(
+                eventRoot.get("eventDate").as(LocalDateTime.class),
+                effectiveRangeStart,
+                effectiveRangeEnd
+        );
 
         if (text != null && !text.isBlank()) {
             String decodeText = URLDecoder.decode(text, StandardCharsets.UTF_8);
@@ -479,8 +483,6 @@ public class EventServiceImpl implements EventService {
         criteriaQuery.where(complexPredicate);
 
         TypedQuery<Event> typedQuery = entityManager.createQuery(criteriaQuery);
-        typedQuery.setFirstResult(from);
-        typedQuery.setMaxResults(size);
 
         List<Event> resultEvents = typedQuery.getResultList();
 
@@ -501,10 +503,13 @@ public class EventServiceImpl implements EventService {
             comparator = Comparator.comparing(EventShortDto::getViews);
         }
 
-        return resultEvents.stream()
+        List<EventShortDto> sortedEvents = resultEvents.stream()
                 .map(e -> EventMapper.toShortDto(e, idViews.getOrDefault(e.getId(), 0L)))
                 .sorted(comparator)
                 .collect(Collectors.toList());
+        int startIndex = Math.min(from, sortedEvents.size());
+        int endIndex = Math.min(from + size, sortedEvents.size());
+        return sortedEvents.subList(startIndex, endIndex);
     }
 
     public Set<EventFullDto> getEventsByIdSet(Set<Long> eventIds) {

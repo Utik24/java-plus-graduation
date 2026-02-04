@@ -1,7 +1,7 @@
 package ru.practicum.request.service;
 
 import jakarta.persistence.EntityManager;
-import lombok.RequiredArgsConstructor;
+import jakarta.validation.ValidationException;import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +49,9 @@ public class RequestServiceImp implements RequestService {
 
     @Override
     public RequestDto create(Long userId, Long eventId) {
+        if (eventId == null || eventId <= 0) {
+            throw new ValidationException("Id события должен быть больше 0");
+        }
         if (!isUserExists(userId)) {
             throw new NotFoundException(String.format("User with id = %d not found", userId));
         }

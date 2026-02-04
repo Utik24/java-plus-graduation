@@ -35,14 +35,19 @@ public class EventControllerAdmin {
 
     @GetMapping
     public List<EventFullDto> getEvents(@RequestParam(name = "users", required = false) List<Integer> users,
-                                           @RequestParam(name = "states", required = false) List<String> states,
-                                           @RequestParam(name = "categories", required = false) List<Long> categories,
-                                           @RequestParam(name = "rangeStart", required = false) @DateTimeFormat(pattern = DATE_TIME_PATTERN) LocalDateTime rangeStart,
-                                           @RequestParam(name = "rangeEnd", required = false) @DateTimeFormat(pattern = DATE_TIME_PATTERN) LocalDateTime rangeEnd,
-                                           @RequestParam(name = "from", defaultValue = "0") @PositiveOrZero int from,
-                                           @RequestParam(name = "size", defaultValue = "10") @Positive int size) {
+                                        @RequestParam(name = "states", required = false) List<String> states,
+                                        @RequestParam(name = "categories", required = false) List<Long> categories,
+                                        @RequestParam(name = "rangeStart", required = false) @DateTimeFormat(pattern = DATE_TIME_PATTERN) LocalDateTime rangeStart,
+                                        @RequestParam(name = "rangeEnd", required = false) @DateTimeFormat(pattern = DATE_TIME_PATTERN) LocalDateTime rangeEnd,
+                                        @RequestParam(name = "from", defaultValue = "0") @PositiveOrZero int from,
+                                        @RequestParam(name = "size", defaultValue = "10") @Positive int size) {
+        List<Long> userIds = users == null ? null : users.stream()
+                .map(Integer::longValue)
+                .collect(java.util.stream.Collectors.toList());
         EventParam p = EventParam.builder()
                 .categories(categories)
+                .users(userIds)
+                .states(states)
                 .rangeStart(rangeStart)
                 .rangeEnd(rangeEnd)
                 .from(from)
