@@ -3,10 +3,8 @@ package ru.practicum.request.service;
 import jakarta.persistence.EntityManager;
 import jakarta.validation.ValidationException;import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 import ru.practicum.client.EventClient;
 import ru.practicum.client.UserClient;
 import ru.practicum.event.model.dto.EventParticipationInfoDto;
@@ -70,12 +68,9 @@ public class RequestServiceImp implements RequestService {
             throw new CreateConditionException(String.format("Событие с id = %d не опубликовано", eventId));
         }
         boolean unlimitedParticipants = eventInfo.getParticipantLimit() == 0;
-        if (!unlimitedParticipants && repository.countByEventId(eventId) >= eventInfo.getParticipantLimit()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "The participant limit has been reached");
-        }
         /*нельзя участвовать при превышении лимита заявок*/
         if (!unlimitedParticipants && eventInfo.getConfirmedRequests() >= eventInfo.getParticipantLimit()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "The participant limit has been reached");
+            throw new CreateConditionException(String.format("У события с id = %d достигнут лимит участников %d", eventId, eventInfo.getParticipantLimit()));
         }
         Request request = new Request();
         request.setRequesterId(userId);

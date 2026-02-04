@@ -8,10 +8,8 @@ import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 import ru.practicum.category.model.Category;
 import ru.practicum.category.model.dto.CategoryDto;
 import ru.practicum.category.model.mapper.CategoryMapper;
@@ -594,7 +592,7 @@ public class EventServiceImpl implements EventService {
             }
             if (prDto.getStatus().equals(RequestStatus.PENDING)) {
                 if (limitAchieved) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, "The participant limit has been reached");
+                    throw new CreateConditionException("Лимит участников достигнут");
                 }
                 prDto.setStatus(RequestStatus.CONFIRMED);
                 confirmedRequestsAmount++;
