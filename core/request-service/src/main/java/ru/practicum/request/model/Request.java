@@ -22,7 +22,7 @@ public class Request {
     @Column(name = "created", columnDefinition = "TIMESTAMP WITHOUT TIME ZONE", nullable = false)
     LocalDateTime created;
 
-    @Column(name = "event", nullable = false)
+    @Column(name = "event_id", nullable = false)
     Long eventId;
 
     @Column(name = "requester", nullable = false)

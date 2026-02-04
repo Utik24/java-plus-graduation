@@ -1,6 +1,5 @@
 package ru.practicum.request.controller;
 
-import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
@@ -26,7 +25,7 @@ public class RequestController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public RequestDto create(@PathVariable("userId") Long userId,
-                             @RequestParam(name = "eventId") @Positive Long eventId) {
+                             @RequestParam(name = "eventId", required = false) Long eventId) {
         return service.create(userId, eventId);
     }
 
