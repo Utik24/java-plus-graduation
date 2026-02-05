@@ -60,7 +60,7 @@ public class RequestServiceImp implements RequestService {
         }
         EventParticipationInfoDto eventInfo = getParticipationInfo(eventId);
         /*инициатор события не может добавить запрос на участие в своём событии */
-        if (eventInfo.getInitiatorId().equals(userId)) { //если событие существует и создатель совпадает по id с пользователем
+        if (eventInfo.getInitiatorId() == userId) { //если событие существует и создатель совпадает по id с пользователем
             throw new ConflictException("Пользователь не может создавать запрос на участие в своем событии");
         }
         /*нельзя участвовать в неопубликованном событии*/
