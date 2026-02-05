@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: extra-service
+    name: comment-service
   sql:
     init:
       mode: always

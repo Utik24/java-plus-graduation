@@ -1,6 +1,5 @@
 package ru.practicum.request.service;
 
-import jakarta.persistence.EntityManager;
 import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +33,6 @@ import io.github.resilience4j.retry.annotation.Retry;
 @Slf4j
 public class RequestServiceImp implements RequestService {
 
-    private final EntityManager entityManager;
     private final RequestRepository repository;
     private final EventClient eventClient;
     private final UserClient userClient;
@@ -62,7 +60,7 @@ public class RequestServiceImp implements RequestService {
         }
         EventParticipationInfoDto eventInfo = getParticipationInfo(eventId);
         /*инициатор события не может добавить запрос на участие в своём событии */
-        if (eventInfo.getInitiatorId() == userId) { //если событие существует и создатель совпадает по id с пользователем
+        if (eventInfo.getInitiatorId().equals(userId)) { //если событие существует и создатель совпадает по id с пользователем
             throw new ConflictException("Пользователь не может создавать запрос на участие в своем событии");
         }
         /*нельзя участвовать в неопубликованном событии*/
@@ -70,10 +68,7 @@ public class RequestServiceImp implements RequestService {
             throw new ConflictException(String.format("Событие с id = %d не опубликовано", eventId));
         }
         boolean unlimitedParticipants = eventInfo.getParticipantLimit() == 0;
-        long confirmedRequests = Math.max(
-                eventInfo.getConfirmedRequests(),
-                repository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED)
-        );
+        long confirmedRequests = repository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
         /*нельзя участвовать при превышении лимита заявок*/
         if (!unlimitedParticipants && confirmedRequests >= eventInfo.getParticipantLimit()) {
             throw new ConflictException(String.format("У события с id = %d достигнут лимит участников %d", eventId, eventInfo.getParticipantLimit()));
@@ -96,14 +91,19 @@ public class RequestServiceImp implements RequestService {
     }
 
     @Override
+    @Transactional
     public RequestDto cancelRequest(Long userId, Long requestId) {
         if (!isUserExists(userId)) {
             throw new NotFoundException(String.format("User with id = %d not found", userId));
         }
         Request request = repository.findById(requestId).orElseThrow(() -> new NotFoundException(String.format("Request with id = %d not found", requestId)));
+        if (!request.getRequesterId().equals(userId)) {
+            throw new ConflictException(String.format("Request with id = %d does not belong to user id = %d", requestId, userId));
+        }
+        if (request.getStatus() == RequestStatus.CANCELED || request.getStatus() == RequestStatus.CONFIRMED) {
+            throw new ConflictException(String.format("Request with id = %d has status %s and cannot be canceled", requestId, request.getStatus()));
+        }
         repository.updateToCanceled(requestId);
-        repository.flush();
-        entityManager.clear();
         return RequestMapper.toRequestDto(repository.findById(requestId).get());
     }
 

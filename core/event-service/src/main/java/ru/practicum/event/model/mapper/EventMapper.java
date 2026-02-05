@@ -4,6 +4,7 @@ import ru.practicum.category.model.Category;
 import ru.practicum.category.model.mapper.CategoryMapper;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.model.dto.EventFullDto;
+import ru.practicum.event.model.dto.EventParticipationInfoDto;
 import ru.practicum.event.model.dto.EventShortDto;
 import ru.practicum.event.model.dto.NewEventDto;
 import ru.practicum.user.model.User;
@@ -97,5 +98,15 @@ public class EventMapper {
         eventFullDto.setViews(views);
 
         return eventFullDto;
+    }
+
+    public static EventParticipationInfoDto toParticipationInfoDto(Event event) {
+        EventParticipationInfoDto dto = new EventParticipationInfoDto();
+        dto.setInitiatorId(event.getInitiator().getId());
+        dto.setState(event.getState().name());
+        dto.setParticipantLimit(event.getParticipantLimit());
+        dto.setConfirmedRequests(event.getConfirmedRequests());
+        dto.setRequestModeration(event.isRequestModeration());
+        return dto;
     }
 }

@@ -28,7 +28,6 @@ import ru.practicum.request.model.RequestStatus;
 import ru.practicum.request.model.dto.RequestDto;
 import ru.practicum.client.RequestClient;
 import ru.practicum.user.model.User;
-import ru.practicum.user.model.dto.UserRequest;
 import ru.practicum.client.UserClient;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
@@ -64,7 +63,7 @@ public class EventServiceImpl implements EventService {
         }
 
         Category category = CategoryMapper.toCategory(categoryService.getById(newEventDto.getCategory()));
-        User user = ensureUserExists(userId);
+        User user = getUserReference(userId);
 
         if (newEventDto.getDescription().trim().isEmpty() || newEventDto.getAnnotation().trim().isEmpty() || newEventDto.getParticipantLimit() < 0) {
             throw new ValidationException("Описание пустое");
@@ -75,16 +74,13 @@ public class EventServiceImpl implements EventService {
         return EventMapper.toFullDto(savedEvent, 0);
     }
 
-    private User ensureUserExists(long userId) {
-        UserRequest userRequest = userClient.getById(userId);
-        entityManager.createNativeQuery(
-                        "INSERT INTO users (id, name, email) VALUES (:id, :name, :email) "
-                                + "ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email")
-                .setParameter("id", userRequest.getId())
-                .setParameter("name", userRequest.getName())
-                .setParameter("email", userRequest.getEmail())
-                .executeUpdate();
-        return entityManager.getReference(User.class, userRequest.getId());
+    private User getUserReference(long userId) {
+        userClient.getById(userId);
+        return entityManager.getReference(User.class, userId);
+    }
+
+    private void validateUserExists(long userId) {
+        userClient.getById(userId);
     }
 
 
@@ -107,7 +103,7 @@ public class EventServiceImpl implements EventService {
 
 
     public List<EventShortDto> getAllByUser(int userId, int from, int size) {
-
+        validateUserExists(userId);
         PageRequest page = PageRequest.of(from / size, size, Sort.by("id").ascending());
 
         List<Event> events = eventJpaRepository.getAllByUser(userId, page);
@@ -121,6 +117,7 @@ public class EventServiceImpl implements EventService {
     }
 
     public EventFullDto getByUserAndId(int userId, int eventId) {
+        validateUserExists(userId);
         Event event = eventJpaRepository.getByIdAndUserId(eventId, userId);
         if (event == null) {
             throw new NotFoundException(String.format("События с id=%d и initiatorId=%d не найдено", eventId, userId));

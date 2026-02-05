@@ -10,7 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>extra-service</artifactId>
+    <artifactId>comment-service</artifactId>
 
     <dependencies>
         <dependency>
