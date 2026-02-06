@@ -60,11 +60,9 @@ public class CompilationServiceImp implements CompilationService {
         Compilation compilation = compilationRepository.findById(compId)
                 .orElseThrow(() -> new NotFoundException(String.format("Compilation with id=%d not found", compId)));
         Set<Long> eventIds = updateRequest.getEvents();
-        Set<Event> eventsSet;
-        if (eventIds == null || eventIds.isEmpty()) {
-            eventsSet = new HashSet<>();
-        } else {
-            eventsSet = eventService.getEventsByIds(eventIds);
+        if (eventIds != null) {
+            Set<Event> eventsSet = eventIds.isEmpty() ? new HashSet<>() : eventService.getEventsByIds(eventIds);
+            compilation.setEvents(eventsSet);
         }
         Boolean pinned = updateRequest.getPinned();
         if (pinned != null) {

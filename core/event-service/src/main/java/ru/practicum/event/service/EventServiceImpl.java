@@ -28,6 +28,8 @@ import ru.practicum.request.model.RequestStatus;
 import ru.practicum.request.model.dto.RequestDto;
 import ru.practicum.client.RequestClient;
 import ru.practicum.user.model.User;
+import ru.practicum.user.model.dto.UserRequest;
+import ru.practicum.user.model.mapper.UserMapper;
 import ru.practicum.client.UserClient;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
@@ -75,29 +77,46 @@ public class EventServiceImpl implements EventService {
     }
 
     private User getUserReference(long userId) {
-        ensureUserExists(userId);
-        return entityManager.getReference(User.class, userId);
+        User user = ensureUserExists(userId);
+        return entityManager.contains(user) ? user : entityManager.getReference(User.class, userId);
     }
 
     private void validateUserExists(long userId) {
         ensureUserExists(userId);
     }
 
-    private void ensureUserExists(long userId) {
-        if (!isUserAvailable(userId)) {
+    private User ensureUserExists(long userId) {
+        UserRequest userRequest = fetchUserFromService(userId);
+        if (userRequest != null) {
+            return upsertLocalUser(userRequest);
+        }
+        User existing = entityManager.find(User.class, userId);
+        if (existing == null) {
             throw new NotFoundException(String.format("Пользователь с id=%d не найден", userId));
         }
+        return existing;
     }
 
-    private boolean isUserAvailable(long userId) {
+    private UserRequest fetchUserFromService(long userId) {
         try {
-            userClient.getById(userId);
-            return true;
+            return userClient.getById(userId);
         } catch (RuntimeException ex) {
-            return entityManager.find(User.class, userId) != null;
+            return null;
         }
     }
 
+
+    private User upsertLocalUser(UserRequest userRequest) {
+        User existing = entityManager.find(User.class, userRequest.getId());
+        if (existing != null) {
+            existing.setName(userRequest.getName());
+            existing.setEmail(userRequest.getEmail());
+            return entityManager.merge(existing);
+        }
+        User user = UserMapper.toUser(userRequest);
+        entityManager.persist(user);
+        return user;
+    }
 
     public List<EventShortDto> getEventsByCategory(int catId) {
         if (catId <= 0) {
