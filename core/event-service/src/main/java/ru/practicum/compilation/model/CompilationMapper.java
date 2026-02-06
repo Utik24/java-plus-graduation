@@ -4,6 +4,7 @@ import ru.practicum.compilation.model.dto.CompilationDto;
 import ru.practicum.compilation.model.dto.NewCompilationDto;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.model.mapper.EventMapper;
+import ru.practicum.user.model.dto.UserShortDto;
 
 import java.util.Map;
 import java.util.Set;
@@ -14,7 +15,9 @@ public class CompilationMapper {
     private CompilationMapper() {
     }
 
-    public static CompilationDto toDto(Compilation compilation, Map<Long, Long> idViewsMap) {
+    public static CompilationDto toDto(Compilation compilation,
+                                       Map<Long, Long> idViewsMap,
+                                       Map<Long, UserShortDto> initiators) {
         CompilationDto compilationDto = new CompilationDto();
         compilationDto.setId(compilation.getId());
         compilationDto.setPinned(compilation.isPinned());
@@ -26,7 +29,8 @@ public class CompilationMapper {
         }
 
         compilationDto.setEvents(compilation.getEvents().stream()
-                .map(e -> EventMapper.toShortDto(e, idViewsMap.getOrDefault(e.getId(), 0L)))
+                .map(e -> EventMapper.toShortDto(e, initiators.get(e.getInitiatorId()),
+                        idViewsMap.getOrDefault(e.getId(), 0L)))
                 .collect(Collectors.toSet()));
         return compilationDto;
     }

@@ -7,7 +7,6 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 import ru.practicum.category.model.Category;
-import ru.practicum.user.model.User;
 
 import java.time.LocalDateTime;
 
@@ -41,9 +40,8 @@ public class Event {
     @Column(name = "event_date")
     LocalDateTime eventDate;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "initiator")
-    User initiator;
+    @Column(name = "initiator")
+    long initiatorId;
 
     @Embedded
     @AttributeOverrides({

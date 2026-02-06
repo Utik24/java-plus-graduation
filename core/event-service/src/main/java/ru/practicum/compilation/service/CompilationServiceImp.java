@@ -19,6 +19,9 @@ import ru.practicum.client.StatsClient;
 import ru.practicum.exception.BadParameterException;
 import ru.practicum.exception.DataConflictException;
 import ru.practicum.exception.NotFoundException;
+import ru.practicum.client.UserClient;
+import ru.practicum.user.model.dto.UserRequest;
+import ru.practicum.user.model.dto.UserShortDto;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -30,6 +33,7 @@ public class CompilationServiceImp implements CompilationService {
     private final EventService eventService;
     private final CompilationRepository compilationRepository;
     private final StatsClient statsClient;
+    private final UserClient userClient;
 
     @Override
     public CompilationDto create(NewCompilationDto newCompilationDto) {
@@ -80,8 +84,15 @@ public class CompilationServiceImp implements CompilationService {
         PageRequest page = PageRequest.of(from / size, size, Sort.by("id").ascending());
         List<Compilation> compilations = compilationRepository.findByPinned(pinned, page);
         Map<Long, Long> idViewsMap = getViewsMapForCompilations(compilations);
+        Set<Long> userIds = compilations.stream()
+                .map(Compilation::getEvents)
+                .filter(Objects::nonNull)
+                .flatMap(Set::stream)
+                .map(Event::getInitiatorId)
+                .collect(Collectors.toSet());
+        Map<Long, UserShortDto> initiators = getUserShortsByIds(userIds);
         return compilations.stream()
-                .map(compilation -> CompilationMapper.toDto(compilation, idViewsMap))
+                .map(compilation -> CompilationMapper.toDto(compilation, idViewsMap, initiators))
                 .collect(Collectors.toList());
     }
 
@@ -128,7 +139,8 @@ public class CompilationServiceImp implements CompilationService {
 
     private CompilationDto mapCompilationWithViews(Compilation compilation) {
         Map<Long, Long> idViewsMap = getViewsMap(compilation.getEvents());
-        return CompilationMapper.toDto(compilation, idViewsMap);
+        Map<Long, UserShortDto> initiators = getUserShorts(compilation.getEvents());
+        return CompilationMapper.toDto(compilation, idViewsMap, initiators);
     }
 
     private Map<Long, Long> getViewsMap(Set<Event> events) {
@@ -152,5 +164,54 @@ public class CompilationServiceImp implements CompilationService {
             return Map.of();
         }
         return statsClient.getMapIdViews(eventIds);
+    }
+    private Map<Long, UserShortDto> getUserShorts(Set<Event> events) {
+        if (events == null || events.isEmpty()) {
+            return Map.of();
+        }
+        Set<Long> userIds = events.stream()
+                .map(Event::getInitiatorId)
+                .collect(Collectors.toSet());
+        return getUserShortsByIds(userIds);
+    }
+
+    private Map<Long, UserShortDto> getUserShortsByIds(Set<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, UserShortDto> result = new HashMap<>();
+        try {
+            List<UserRequest> users = userClient.getByIds(new ArrayList<>(userIds));
+            if (users != null) {
+                for (UserRequest user : users) {
+                    UserShortDto dto = new UserShortDto();
+                    dto.setId(user.getId());
+                    dto.setName(user.getName());
+                    result.put(user.getId(), dto);
+                }
+            }
+        } catch (RuntimeException ex) {
+            result.clear();
+        }
+        for (Long userId : userIds) {
+            result.computeIfAbsent(userId, this::getUserShort);
+        }
+        return result;
+    }
+
+    private UserShortDto getUserShort(long userId) {
+        UserRequest userRequest;
+        try {
+            userRequest = userClient.getById(userId);
+        } catch (RuntimeException ex) {
+            userRequest = null;
+        }
+        if (userRequest == null) {
+            throw new NotFoundException(String.format("User with id=%d not found", userId));
+        }
+        UserShortDto dto = new UserShortDto();
+        dto.setId(userRequest.getId());
+        dto.setName(userRequest.getName());
+        return dto;
     }
 }

@@ -18,20 +18,19 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     @Query("SELECT e " +
             "FROM Event as e " +
-            "WHERE initiator.id = ?1")
+            "WHERE initiatorId = ?1")
     List<Event> getAllByUser(long userId, PageRequest page);
 
     @Query("SELECT e " +
             "FROM Event as e " +
             "WHERE id = ?1 " +
-            "AND initiator.id = ?2")
+            "AND initiatorId = ?2")
     Event getByIdAndUserId(long eventId, long userId);
 
     List<Event> findByIdIn(Set<Long> eventIds);
 
     @Query("SELECT e " +
             "FROM Event as e " +
-            "JOIN FETCH e.initiator " +
             "WHERE e.id in ?1 ")
     List<Event> findEventsWIthUsersByIdSet(Set<Long> eventIds);
 
