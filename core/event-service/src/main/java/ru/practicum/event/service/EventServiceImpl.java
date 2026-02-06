@@ -82,29 +82,21 @@ public class EventServiceImpl implements EventService {
     }
 
     private void validateUserExists(long userId) {
-        UserRequest userRequest = fetchUserFromService(userId);
-        if (userRequest != null) {
-            return;
-        }
-        User existing = entityManager.find(User.class, userId);
-        if (existing == null) {
+        UserRequest userRequest = getUserFromService(userId);
+        if (userRequest == null) {
             throw new NotFoundException(String.format("Пользователь с id=%d не найден", userId));
         }
     }
 
     private User ensureUserExists(long userId) {
-        UserRequest userRequest = fetchUserFromService(userId);
-        if (userRequest != null) {
-            return upsertLocalUser(userRequest);
-        }
-        User existing = entityManager.find(User.class, userId);
-        if (existing == null) {
+        UserRequest userRequest = getUserFromService(userId);
+        if (userRequest == null) {
             throw new NotFoundException(String.format("Пользователь с id=%d не найден", userId));
         }
-        return existing;
+        return entityManager.getReference(User.class, userId);
     }
 
-    private UserRequest fetchUserFromService(long userId) {
+    private UserRequest getUserFromService(long userId) {
         try {
             return userClient.getById(userId);
         } catch (RuntimeException ex) {
@@ -113,22 +105,7 @@ public class EventServiceImpl implements EventService {
     }
 
 
-    private User upsertLocalUser(UserRequest userRequest) {
-        User existing = entityManager.find(User.class, userRequest.getId());
-        if (existing != null) {
-            existing.setName(userRequest.getName());
-            existing.setEmail(userRequest.getEmail());
-            return entityManager.merge(existing);
-        }
-        User user = UserMapper.toUser(userRequest);
-        return entityManager.merge(user);
-    }
-    private User findUserByEmail(String email) {
-        TypedQuery<User> query = entityManager.createQuery(
-                "select u from User u where u.email = :email", User.class);
-        query.setParameter("email", email);
-        return query.getResultStream().findFirst().orElse(null);
-    }
+
     public List<EventShortDto> getEventsByCategory(int catId) {
         if (catId <= 0) {
             throw new BadParameterException("Id категории должен быть >0");
@@ -182,8 +159,9 @@ public class EventServiceImpl implements EventService {
     }
 
     public EventFullDto getEvent(int eventId, HttpServletRequest request) {
-        EventFullDto eventDto = this.getEvent(eventId);
-        if (eventDto.getState() != EventState.PUBLISHED) {
+        Event event = eventJpaRepository.findById((long) eventId)
+                .orElseThrow(() -> new NotFoundException(String.format("События с id=%d не найдено", eventId)));
+        if (event.getState() != EventState.PUBLISHED) {
             throw new NotFoundException(String.format("Событие с id=%d не опубликовано", eventId));
         }
         StatisticsPostResponseDto endpointHitDto = new StatisticsPostResponseDto();
@@ -194,7 +172,8 @@ public class EventServiceImpl implements EventService {
 
         statsClient.postHit(endpointHitDto);
 
-        return eventDto;
+        Map<Long, Long> idViewsMap = statsClient.getMapIdViews(List.of(event.getId()));
+        return EventMapper.toFullDto(event, idViewsMap.getOrDefault(event.getId(), 0L));
     }
 
 
@@ -330,6 +309,7 @@ public class EventServiceImpl implements EventService {
                         throw new DataConflictException(String.format("Попытка опубликовать событие с id=%d, которое уже отменено.", event.getId()));
                     }
                     event.setState(EventState.PUBLISHED);
+                    event.setPublishedOn(LocalDateTime.now());
                     break;
                 case REJECT_EVENT:
                     if (event.getState() == EventState.PUBLISHED) {
