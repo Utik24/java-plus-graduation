@@ -72,7 +72,6 @@ public class CompilationServiceImp implements CompilationService {
         if (title != null) {
             compilation.setTitle(title);
         }
-        compilation.setEvents(eventsSet);
         compilation = compilationRepository.save(compilation);
         return mapCompilationWithViews(compilation);
     }
