@@ -123,7 +123,12 @@ public class EventServiceImpl implements EventService {
         User user = UserMapper.toUser(userRequest);
         return entityManager.merge(user);
     }
-
+    private User findUserByEmail(String email) {
+        TypedQuery<User> query = entityManager.createQuery(
+                "select u from User u where u.email = :email", User.class);
+        query.setParameter("email", email);
+        return query.getResultStream().findFirst().orElse(null);
+    }
     public List<EventShortDto> getEventsByCategory(int catId) {
         if (catId <= 0) {
             throw new BadParameterException("Id категории должен быть >0");
