@@ -103,8 +103,9 @@ public class RequestServiceImp implements RequestService {
         if (request.getStatus() == RequestStatus.CANCELED || request.getStatus() == RequestStatus.CONFIRMED) {
             throw new ConflictException(String.format("Request with id = %d has status %s and cannot be canceled", requestId, request.getStatus()));
         }
-        repository.updateToCanceled(requestId);
-        return RequestMapper.toRequestDto(repository.findById(requestId).get());
+        request.setStatus(RequestStatus.CANCELED);
+        Request savedRequest = repository.save(request);
+        return RequestMapper.toRequestDto(savedRequest);
     }
 
     @Override
