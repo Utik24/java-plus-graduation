@@ -75,12 +75,27 @@ public class EventServiceImpl implements EventService {
     }
 
     private User getUserReference(long userId) {
-        userClient.getById(userId);
+        ensureUserExists(userId);
         return entityManager.getReference(User.class, userId);
     }
 
     private void validateUserExists(long userId) {
-        userClient.getById(userId);
+        ensureUserExists(userId);
+    }
+
+    private void ensureUserExists(long userId) {
+        if (!isUserAvailable(userId)) {
+            throw new NotFoundException(String.format("Пользователь с id=%d не найден", userId));
+        }
+    }
+
+    private boolean isUserAvailable(long userId) {
+        try {
+            userClient.getById(userId);
+            return true;
+        } catch (RuntimeException ex) {
+            return entityManager.find(User.class, userId) != null;
+        }
     }
 
 
