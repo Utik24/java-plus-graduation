@@ -33,6 +33,7 @@ import ru.practicum.client.UserClient;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import ru.practicum.exception.ConflictException;
+import ru.practicum.user.model.User;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
