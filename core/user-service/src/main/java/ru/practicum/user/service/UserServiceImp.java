@@ -46,11 +46,9 @@ public class UserServiceImp implements UserService {
         if (ids != null && !ids.isEmpty()) {
             users = userRepository.findAllByIdInOrderById(ids);
         } else {
-            PageRequest page = PageRequest.of(
-                    from != null ? from : 0,
-                    size != null ? size : Integer.MAX_VALUE,
-                    Sort.by("id").ascending()
-            );
+            int pageIndex = (from != null && size != null && size > 0) ? from / size : 0;
+            int pageSize = size != null ? size : Integer.MAX_VALUE;
+            PageRequest page = PageRequest.of(pageIndex, pageSize, Sort.by("id").ascending());
             users = userRepository.findAll(page).getContent();
         }
 

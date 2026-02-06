@@ -49,7 +49,6 @@ public class Event {
     @AttributeOverrides({
             @AttributeOverride(name = "lat", column = @Column(name = "location_lat")),
             @AttributeOverride(name = "lon", column = @Column(name = "location_lon"))})
-    @Column(name = "location")
     Location location;
 
     @Column(name = "paid")

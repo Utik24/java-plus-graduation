@@ -28,7 +28,9 @@ public class CategoryServiceImp implements CategoryService {
 
     @Override
     public List<CategoryDto> getAll(Integer from, Integer size) {
-        PageRequest page = PageRequest.of(from, size, Sort.by("id").ascending());
+        int pageIndex = (from != null && size != null && size > 0) ? from / size : 0;
+        int pageSize = size != null ? size : Integer.MAX_VALUE;
+        PageRequest page = PageRequest.of(pageIndex, pageSize, Sort.by("id").ascending());
         List<Category> categories = repository.findAll(page).getContent();
         return categories.stream().map(CategoryMapper::toCategoryDto).toList();
     }
