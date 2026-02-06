@@ -82,7 +82,14 @@ public class EventServiceImpl implements EventService {
     }
 
     private void validateUserExists(long userId) {
-        ensureUserExists(userId);
+        UserRequest userRequest = fetchUserFromService(userId);
+        if (userRequest != null) {
+            return;
+        }
+        User existing = entityManager.find(User.class, userId);
+        if (existing == null) {
+            throw new NotFoundException(String.format("Пользователь с id=%d не найден", userId));
+        }
     }
 
     private User ensureUserExists(long userId) {
@@ -114,8 +121,7 @@ public class EventServiceImpl implements EventService {
             return entityManager.merge(existing);
         }
         User user = UserMapper.toUser(userRequest);
-        entityManager.persist(user);
-        return user;
+        return entityManager.merge(user);
     }
 
     public List<EventShortDto> getEventsByCategory(int catId) {
