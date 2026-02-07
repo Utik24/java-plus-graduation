@@ -32,4 +32,19 @@ public class Statistics {
     @Column(name = "call_time", nullable = false)
     LocalDateTime timestamp;
 
+    public String getApp() {
+        return app;
+    }
+
+    public String getUri() {
+        return uri;
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
 }

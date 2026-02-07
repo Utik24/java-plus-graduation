@@ -1,0 +1,208 @@
+package ru.practicum.request.service;
+
+import jakarta.validation.ValidationException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.client.EventClient;
+import ru.practicum.client.UserClient;
+import ru.practicum.event.model.dto.EventParticipationInfoDto;
+import ru.practicum.exception.BadParameterException;
+import ru.practicum.exception.ConflictException;
+import ru.practicum.exception.CreateConditionException;
+import ru.practicum.exception.NotFoundException;
+import ru.practicum.request.model.Request;
+import ru.practicum.request.model.RequestStatus;
+import ru.practicum.request.model.dto.RequestDto;
+import ru.practicum.request.model.mapper.RequestMapper;
+import ru.practicum.request.repository.RequestRepository;
+
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class RequestServiceImp implements RequestService {
+
+    private final RequestRepository repository;
+    private final EventClient eventClient;
+    private final UserClient userClient;
+
+
+    @Override
+    public List<RequestDto> getAll(Long userId) {
+        if (!isUserExists(userId)) {
+            throw new NotFoundException(String.format("User with id = %d not found", userId));
+        }
+        return repository.findByRequester(userId).stream().map(RequestMapper::toRequestDto).toList();
+    }
+
+    @Override
+    public RequestDto create(Long userId, Long eventId) {
+        if (eventId == null || eventId <= 0) {
+            throw new ValidationException("Id события должен быть больше 0");
+        }
+        if (!isUserExists(userId)) {
+            throw new NotFoundException(String.format("User with id = %d not found", userId));
+        }
+        Request duplicatedRequest = repository.findByEventIdAndRequesterId(eventId, userId);
+        if (duplicatedRequest != null) {
+            throw new ConflictException(String.format("Запрос от пользователя id = %d на событие c id = %d уже существует", userId, eventId));
+        }
+        EventParticipationInfoDto eventInfo = getParticipationInfo(eventId);
+        /*инициатор события не может добавить запрос на участие в своём событии */
+        if (eventInfo.getInitiatorId() == userId) { //если событие существует и создатель совпадает по id с пользователем
+            throw new ConflictException("Пользователь не может создавать запрос на участие в своем событии");
+        }
+        /*нельзя участвовать в неопубликованном событии*/
+        if (!"PUBLISHED".equals(eventInfo.getState())) {
+            throw new ConflictException(String.format("Событие с id = %d не опубликовано", eventId));
+        }
+        boolean unlimitedParticipants = eventInfo.getParticipantLimit() == 0;
+        long confirmedRequests = repository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+        /*нельзя участвовать при превышении лимита заявок*/
+        if (!unlimitedParticipants && confirmedRequests >= eventInfo.getParticipantLimit()) {
+            throw new ConflictException(String.format("У события с id = %d достигнут лимит участников %d", eventId, eventInfo.getParticipantLimit()));
+        }
+        Request request = new Request();
+        request.setRequesterId(userId);
+        request.setEventId(eventId);
+        request.setCreated(LocalDateTime.now());
+        boolean autoConfirm = unlimitedParticipants || !eventInfo.isRequestModeration();
+        request.setStatus(autoConfirm ? RequestStatus.CONFIRMED : RequestStatus.PENDING);
+        Request savedRequest = repository.save(request);
+        if (autoConfirm && !unlimitedParticipants) {
+            try {
+                incrementConfirmedRequests(eventId, 1);
+            } catch (RuntimeException ex) {
+                log.warn("Не удалось обновить подтвержденные заявки для события {}.", eventId, ex);
+            }
+        }
+        return RequestMapper.toRequestDto(savedRequest);
+    }
+
+    @Override
+    @Transactional
+    public RequestDto cancelRequest(Long userId, Long requestId) {
+        if (!isUserExists(userId)) {
+            throw new NotFoundException(String.format("User with id = %d not found", userId));
+        }
+        Request request = repository.findById(requestId).orElseThrow(() -> new NotFoundException(String.format("Request with id = %d not found", requestId)));
+        if (!request.getRequesterId().equals(userId)) {
+            throw new ConflictException(String.format("Request with id = %d does not belong to user id = %d", requestId, userId));
+        }
+        if (request.getStatus() == RequestStatus.CANCELED || request.getStatus() == RequestStatus.CONFIRMED) {
+            throw new ConflictException(String.format("Request with id = %d has status %s and cannot be canceled", requestId, request.getStatus()));
+        }
+        request.setStatus(RequestStatus.CANCELED);
+        Request savedRequest = repository.save(request);
+        return RequestMapper.toRequestDto(savedRequest);
+    }
+
+    @Override
+    public List<RequestDto> getAllRequestsEventId(Long eventId) {
+        if (eventId < 0) {
+            throw new BadParameterException("Id события должен быть больше 0");
+        }
+
+        List<Request> partRequests = repository.findAllByEventId(eventId); //запрашиваем все запросы на событие
+        if (partRequests == null || partRequests.isEmpty()) { //если запросов нет, возвращаем пустой список
+            return new ArrayList<>();
+        }
+        /*преобразуем в DTO и возвращаем*/
+        return partRequests.stream()
+                .map(RequestMapper::toRequestDto)
+                .collect(Collectors.toList());
+    }
+
+    public void updateEventRequests(Long eventId, List<RequestDto> requestDtoList) {
+        if (requestDtoList == null || requestDtoList.isEmpty()) {
+            return;
+        }
+        getParticipationInfo(eventId);
+        Map<Long, Request> existing = repository.findAllById(requestDtoList.stream()
+                        .map(RequestDto::getId)
+                        .collect(Collectors.toList()))
+                .stream()
+                .collect(Collectors.toMap(Request::getId, r -> r));
+
+        List<Request> updated = requestDtoList.stream()
+                .map(dto -> {
+                    Request request = existing.getOrDefault(dto.getId(), RequestMapper.toRequest(dto));
+                    request.setEventId(eventId);
+                    request.setRequesterId(dto.getRequester());
+                    request.setStatus(dto.getStatus());
+                    request.setCreated(LocalDateTime.parse(dto.getCreated(), RequestMapper.TIME_FORMAT));
+                    return request;
+                })
+                .collect(Collectors.toList());
+
+        repository.saveAll(updated);
+    }
+
+    @Override
+    @Transactional
+    public void updateAll(List<RequestDto> requestDtoList, Long eventId) {
+        if (eventId == null) {
+            throw new NotFoundException("Event is required to update requests");
+        }
+        updateEventRequests(eventId, requestDtoList);
+    }
+
+
+    @Override
+    @Transactional
+    public void update(RequestDto prDto, Long eventId) {
+        if (eventId == null) {
+            throw new NotFoundException("Event is required to update request");
+        }
+        updateEventRequests(eventId, List.of(prDto));
+    }
+
+    @Retry(name = "event-service", fallbackMethod = "getParticipationInfoFallback")
+    @CircuitBreaker(name = "event-service", fallbackMethod = "getParticipationInfoFallback")
+    private EventParticipationInfoDto getParticipationInfo(Long eventId) {
+        return eventClient.getParticipationInfo(eventId);
+    }
+
+    @SuppressWarnings("unused")
+    private EventParticipationInfoDto getParticipationInfoFallback(Long eventId, Throwable ex) {
+        EventParticipationInfoDto fallback = new EventParticipationInfoDto();
+        fallback.setInitiatorId(-1L);
+        fallback.setState("CANCELED");
+        fallback.setParticipantLimit(0);
+        fallback.setConfirmedRequests(0);
+        fallback.setRequestModeration(false);
+        return fallback;
+    }
+
+    @Retry(name = "user-service", fallbackMethod = "isUserExistsFallback")
+    @CircuitBreaker(name = "user-service", fallbackMethod = "isUserExistsFallback")
+    private boolean isUserExists(Long userId) {
+        return userClient.existsById(userId);
+    }
+
+    @SuppressWarnings("unused")
+    private boolean isUserExistsFallback(Long userId, Throwable ex) {
+        return false;
+    }
+
+    @Retry(name = "event-service", fallbackMethod = "incrementConfirmedRequestsFallback")
+    @CircuitBreaker(name = "event-service", fallbackMethod = "incrementConfirmedRequestsFallback")
+    private void incrementConfirmedRequests(Long eventId, int delta) {
+        eventClient.incrementConfirmedRequests(eventId, delta);
+    }
+
+    @SuppressWarnings("unused")
+    private void incrementConfirmedRequestsFallback(Long eventId, int delta, Throwable ex) {
+    }
+}
