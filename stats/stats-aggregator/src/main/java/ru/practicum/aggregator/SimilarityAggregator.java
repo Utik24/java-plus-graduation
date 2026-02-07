@@ -86,8 +86,11 @@ public class SimilarityAggregator {
             return;
         }
         double minSum = getMinWeightSum(eventId, otherEventId);
-        double score = minSum / (sumA * sumB);
-
+        double denominator = Math.sqrt(sumA) * Math.sqrt(sumB);
+        if (denominator == 0.0) {
+            return;
+        }
+        double score = minSum / denominator;
         long first = Math.min(eventId, otherEventId);
         long second = Math.max(eventId, otherEventId);
 
