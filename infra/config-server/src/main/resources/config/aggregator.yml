@@ -1,0 +1,15 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: aggregator
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: aggregator
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: ru.practicum.ewm.stats.avro.UserActionAvroDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: ru.practicum.ewm.stats.avro.EventSimilarityAvroSerializer

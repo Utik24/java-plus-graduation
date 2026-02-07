@@ -83,7 +83,7 @@ public class CompilationServiceImp implements CompilationService {
     public List<CompilationDto> getAllComps(boolean pinned, int from, int size) {
         PageRequest page = PageRequest.of(from / size, size, Sort.by("id").ascending());
         List<Compilation> compilations = compilationRepository.findByPinned(pinned, page);
-        Map<Long, Long> idViewsMap = getViewsMapForCompilations(compilations);
+        Map<Long, Double> idRatingsMap = getRatingsMapForCompilations(compilations);
         Set<Long> userIds = compilations.stream()
                 .map(Compilation::getEvents)
                 .filter(Objects::nonNull)
@@ -92,7 +92,7 @@ public class CompilationServiceImp implements CompilationService {
                 .collect(Collectors.toSet());
         Map<Long, UserShortDto> initiators = getUserShortsByIds(userIds);
         return compilations.stream()
-                .map(compilation -> CompilationMapper.toDto(compilation, idViewsMap, initiators))
+                .map(compilation -> CompilationMapper.toDto(compilation, idRatingsMap, initiators))
                 .collect(Collectors.toList());
     }
 
@@ -138,21 +138,21 @@ public class CompilationServiceImp implements CompilationService {
     }
 
     private CompilationDto mapCompilationWithViews(Compilation compilation) {
-        Map<Long, Long> idViewsMap = getViewsMap(compilation.getEvents());
+        Map<Long, Double> idRatingsMap = getRatingsMap(compilation.getEvents());
         Map<Long, UserShortDto> initiators = getUserShorts(compilation.getEvents());
-        return CompilationMapper.toDto(compilation, idViewsMap, initiators);
+        return CompilationMapper.toDto(compilation, idRatingsMap, initiators);
     }
 
-    private Map<Long, Long> getViewsMap(Set<Event> events) {
+    private Map<Long, Double> getRatingsMap(Set<Event> events) {
         if (events == null || events.isEmpty()) {
             return Map.of();
         }
-        return statsClient.getMapIdViews(events.stream()
+        return statsClient.getInteractionsCount(events.stream()
                 .map(Event::getId)
                 .collect(Collectors.toList()));
     }
 
-    private Map<Long, Long> getViewsMapForCompilations(List<Compilation> compilations) {
+    private Map<Long, Double> getRatingsMapForCompilations(List<Compilation> compilations) {
         List<Long> eventIds = compilations.stream()
                 .map(Compilation::getEvents)
                 .filter(Objects::nonNull)
@@ -163,7 +163,7 @@ public class CompilationServiceImp implements CompilationService {
         if (eventIds.isEmpty()) {
             return Map.of();
         }
-        return statsClient.getMapIdViews(eventIds);
+        return statsClient.getInteractionsCount(eventIds);
     }
     private Map<Long, UserShortDto> getUserShorts(Set<Event> events) {
         if (events == null || events.isEmpty()) {

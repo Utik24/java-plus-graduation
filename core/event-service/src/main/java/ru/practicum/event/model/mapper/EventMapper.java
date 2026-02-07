@@ -63,7 +63,7 @@ public class EventMapper {
     }
 
 
-    public static EventShortDto toShortDto(Event event, UserShortDto initiator, long views) {
+    public static EventShortDto toShortDto(Event event, UserShortDto initiator, double rating) {
         EventShortDto shortDto = new EventShortDto();
 
         shortDto.setId(event.getId());
@@ -74,13 +74,13 @@ public class EventMapper {
         shortDto.setInitiator(initiator);
         shortDto.setPaid(event.isPaid());
         shortDto.setTitle(event.getTitle());
-        shortDto.setViews(views);
+        shortDto.setRating(rating);
 
         return shortDto;
     }
 
 
-    public static EventFullDto toFullDto(Event event, UserShortDto initiator, long views) {
+    public static EventFullDto toFullDto(Event event, UserShortDto initiator, double rating) {
         EventFullDto eventFullDto = new EventFullDto();
 
         eventFullDto.setId(event.getId());
@@ -99,7 +99,7 @@ public class EventMapper {
         }        eventFullDto.setRequestModeration(event.isRequestModeration());
         eventFullDto.setState(event.getState());
         eventFullDto.setTitle(event.getTitle());
-        eventFullDto.setViews(views);
+        eventFullDto.setRating(rating);
 
         return eventFullDto;
     }
