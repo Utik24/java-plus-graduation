@@ -13,10 +13,10 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>stats-proto</module>
         <module>stats-client</module>
         <module>stats-dto</module>
         <module>stats-server</module>
-        <module>stats-proto</module>
         <module>stats-collector</module>
         <module>stats-analyzer</module>
         <module>stats-aggregator</module>
@@ -29,6 +29,11 @@
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>javax.annotation</groupId>
+            <artifactId>javax.annotation-api</artifactId>
+            <version>1.3.2</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
