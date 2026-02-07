@@ -10,7 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>stats-analyzer</artifactId>
+    <artifactId>analyzer</artifactId>
 
     <dependencies>
         <dependency>
