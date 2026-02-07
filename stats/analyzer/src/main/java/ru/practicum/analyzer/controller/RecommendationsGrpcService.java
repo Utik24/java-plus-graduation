@@ -95,17 +95,16 @@ public class RecommendationsGrpcService extends RecommendationsControllerGrpc.Re
         }
 
         List<UserEventInteractionEntity> allInteractions = interactionRepository.findByIdUserId(userId);
-        List<Map.Entry<Long, Double>> topCandidates = candidateScores.entrySet().stream()
+        List<Map.Entry<Long, Double>> scoredCandidates = candidateScores.keySet().stream()
+                .map(candidateEventId -> Map.entry(candidateEventId, predictScore(candidateEventId, allInteractions)))
                 .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
                 .limit(maxResults)
                 .toList();
 
-        for (Map.Entry<Long, Double> entry : topCandidates) {
-            long candidateEventId = entry.getKey();
-            double predictedScore = predictScore(candidateEventId, allInteractions);
+        for (Map.Entry<Long, Double> entry : scoredCandidates) {
             responseObserver.onNext(RecommendedEventProto.newBuilder()
-                    .setEventId(candidateEventId)
-                    .setScore(predictedScore)
+                    .setEventId(entry.getKey())
+                    .setScore(entry.getValue())
                     .build());
         }
         responseObserver.onCompleted();
