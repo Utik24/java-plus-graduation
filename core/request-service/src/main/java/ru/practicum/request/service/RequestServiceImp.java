@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.client.EventClient;
 import ru.practicum.client.UserClient;
+import ru.practicum.client.StatsClient;
+import ru.practicum.ewm.stats.proto.collector.ActionTypeProto;
 import ru.practicum.event.model.dto.EventParticipationInfoDto;
 import ru.practicum.exception.BadParameterException;
 import ru.practicum.exception.ConflictException;
@@ -18,7 +20,7 @@ import ru.practicum.request.model.dto.RequestDto;
 import ru.practicum.request.model.mapper.RequestMapper;
 import ru.practicum.request.repository.RequestRepository;
 
-
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +38,7 @@ public class RequestServiceImp implements RequestService {
     private final RequestRepository repository;
     private final EventClient eventClient;
     private final UserClient userClient;
+    private final StatsClient statsClient;
 
 
     @Override
@@ -80,6 +83,7 @@ public class RequestServiceImp implements RequestService {
         boolean autoConfirm = unlimitedParticipants || !eventInfo.isRequestModeration();
         request.setStatus(autoConfirm ? RequestStatus.CONFIRMED : RequestStatus.PENDING);
         Request savedRequest = repository.save(request);
+        statsClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_REGISTER, Instant.now());
         if (autoConfirm && !unlimitedParticipants) {
             try {
                 incrementConfirmedRequests(eventId, 1);

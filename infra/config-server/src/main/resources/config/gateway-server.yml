@@ -23,6 +23,18 @@ spring:
           uri: lb://comment-service
           predicates:
             - Path=/event/**,/comments/**
+        - id: collector
+          uri: lb://collector
+          predicates:
+            - Path=/collector/**
+        - id: analyzer
+          uri: lb://analyzer
+          predicates:
+            - Path=/analyzer/**
+        - id: aggregator
+          uri: lb://aggregator
+          predicates:
+            - Path=/aggregator/**
 management:
   endpoints:
     web:

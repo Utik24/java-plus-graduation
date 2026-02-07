@@ -1,6 +1,5 @@
 package ru.practicum.event.controller;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
@@ -35,8 +34,8 @@ public class EventControllerPublic {
                                          @RequestParam(name = "onlyAvailable", required = false) Boolean onlyAvailable,
                                          @RequestParam(name = "sort", required = false) String sort,
                                          @RequestParam(name = "from", defaultValue = "0") @PositiveOrZero int from,
-                                         @RequestParam(name = "size", defaultValue = "10") @Positive int size,
-                                         HttpServletRequest request)  {
+                                         @RequestParam(name = "size", defaultValue = "10") @Positive int size) {
+
         EventParam p = EventParam.builder()
                 .text(text)
                 .categories(categories)
@@ -47,7 +46,6 @@ public class EventControllerPublic {
                 .sort(sort)
                 .from(from)
                 .size(size)
-                .request(request)
                 .build();
 
         log.info("Выполнен запрос получения всех событий");
@@ -55,9 +53,23 @@ public class EventControllerPublic {
     }
 
     @GetMapping(EVENT_ID_PATH)
-    public EventFullDto getEvent(@PathVariable(name = "eventId")  @Positive int eventId,
-                                                 HttpServletRequest request) {
+    public EventFullDto getEvent(@PathVariable(name = "eventId") @Positive int eventId,
+                                 @RequestHeader("X-EWM-USER-ID") long userId) {
         log.info("Выполнен запрос получения события с id={}", eventId);
-        return eventService.getEvent(eventId, request);
+        return eventService.getEvent(eventId, userId);
+    }
+
+    @GetMapping("/recommendations")
+    public List<EventShortDto> getRecommendations(@RequestHeader("X-EWM-USER-ID") long userId,
+                                                  @RequestParam(name = "maxResults", defaultValue = "10") @Positive int maxResults) {
+        log.info("Выполнен запрос рекомендаций для пользователя {}", userId);
+        return eventService.getRecommendationsForUser(userId, maxResults);
+    }
+
+    @PutMapping("/{eventId}/like")
+    public void likeEvent(@PathVariable("eventId") @Positive long eventId,
+                          @RequestHeader("X-EWM-USER-ID") long userId) {
+        log.info("Выполнен запрос лайка события {} пользователем {}", eventId, userId);
+        eventService.likeEvent(userId, eventId);
     }
 }
