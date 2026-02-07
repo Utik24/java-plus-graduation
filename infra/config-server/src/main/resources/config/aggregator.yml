@@ -8,7 +8,7 @@ spring:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: aggregator
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      key-deserializer: org.apache.kafka.common.serialization.LongDeserializer
       value-deserializer: ru.practicum.ewm.stats.avro.UserActionAvroDeserializer
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer

@@ -16,9 +16,9 @@ import java.time.Instant;
 public class UserActionGrpcService extends UserActionControllerGrpc.UserActionControllerImplBase {
     private static final String USER_ACTIONS_TOPIC = "stats.user-actions.v1";
 
-    private final KafkaTemplate<String, UserActionAvro> kafkaTemplate;
+    private final KafkaTemplate<Long, UserActionAvro> kafkaTemplate;
 
-    public UserActionGrpcService(KafkaTemplate<String, UserActionAvro> kafkaTemplate) {
+    public UserActionGrpcService(KafkaTemplate<Long, UserActionAvro> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
     }
 
@@ -30,7 +30,7 @@ public class UserActionGrpcService extends UserActionControllerGrpc.UserActionCo
                 mapAction(request.getActionType()),
                 Instant.ofEpochMilli(request.getTimestamp().getSeconds() * 1000 + request.getTimestamp().getNanos() / 1_000_000)
         );
-        kafkaTemplate.send(USER_ACTIONS_TOPIC, String.valueOf(action.userId()), action);
+        kafkaTemplate.send(USER_ACTIONS_TOPIC, action.userId(), action);
         responseObserver.onNext(Empty.getDefaultInstance());
         responseObserver.onCompleted();
     }

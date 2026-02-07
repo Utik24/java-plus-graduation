@@ -2,6 +2,7 @@ package ru.practicum.analyzer.config;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.LongDeserializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,13 +21,13 @@ import java.util.Map;
 public class KafkaConfig {
 
     @Bean
-    public ConsumerFactory<String, UserActionAvro> userActionConsumerFactory(
+    public ConsumerFactory<Long, UserActionAvro> userActionConsumerFactory(
             @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
             @Value("${spring.kafka.consumer.group-id:analyzer}") String groupId) {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId + "-user-actions");
-        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), new UserActionAvroDeserializer());
+        return new DefaultKafkaConsumerFactory<>(props, new LongDeserializer(), new UserActionAvroDeserializer());
     }
 
     @Bean
@@ -40,9 +41,9 @@ public class KafkaConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, UserActionAvro> userActionKafkaListenerContainerFactory(
-            ConsumerFactory<String, UserActionAvro> userActionConsumerFactory) {
-        ConcurrentKafkaListenerContainerFactory<String, UserActionAvro> factory =
+    public ConcurrentKafkaListenerContainerFactory<Long, UserActionAvro> userActionKafkaListenerContainerFactory(
+            ConsumerFactory<Long, UserActionAvro> userActionConsumerFactory) {
+        ConcurrentKafkaListenerContainerFactory<Long, UserActionAvro> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(userActionConsumerFactory);
         return factory;
