@@ -527,7 +527,7 @@ public class EventServiceImpl implements EventService {
 
         List<EventShortDto> sortedEvents = resultEvents.stream()
                 .map(e -> EventMapper.toShortDto(e, initiators.get(e.getInitiatorId()),
-                        idViews.getOrDefault(e.getId(), 0L)))
+                        idRatings.getOrDefault(e.getId(), 0.0)))
                 .sorted(comparator)
                 .collect(Collectors.toList());
         int startIndex = Math.min(from, sortedEvents.size());
@@ -540,9 +540,9 @@ public class EventServiceImpl implements EventService {
         validateUserExists(userId);
         List<ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto> recommendations =
                 statsClient.getRecommendationsForUser(userId, maxResults);
-        List<Long> eventIds = recommendations.stream()
+        Set<Long> eventIds = recommendations.stream()
                 .map(ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto::getEventId)
-                .toList();
+                .collect(Collectors.toSet());
         if (eventIds.isEmpty()) {
             return List.of();
         }
