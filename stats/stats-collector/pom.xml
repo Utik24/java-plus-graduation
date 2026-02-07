@@ -10,7 +10,8 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>stats-collector</artifactId>
+    <artifactId>collector</artifactId>
+    <packaging>pom</packaging>
 
     <dependencies>
         <dependency>
