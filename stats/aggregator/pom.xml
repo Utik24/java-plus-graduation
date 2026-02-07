@@ -73,6 +73,12 @@
                                 <copy file="${project.build.directory}/${project.build.finalName}.jar"
                                       tofile="${project.basedir}/../../aggregator/target/${project.build.finalName}.jar"
                                       overwrite="true"/>
+                                <copy file="${project.build.directory}/${project.build.finalName}.jar"
+                                      tofile="${project.basedir}/../../aggregator/target/${project.artifactId}-${project.version}.jar"
+                                      overwrite="true"/>
+                                <copy file="${project.build.directory}/${project.build.finalName}.jar"
+                                      tofile="${project.build.directory}/${project.artifactId}-${project.version}.jar"
+                                      overwrite="true"/>
                             </target>
                         </configuration>
                     </execution>
