@@ -16,6 +16,7 @@ import ru.practicum.category.service.CategoryService;
 import ru.practicum.event.model.*;
 import ru.practicum.client.StatsClient;
 import ru.practicum.ewm.stats.proto.collector.ActionTypeProto;
+import ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto;
 import ru.practicum.event.model.dto.*;
 import ru.practicum.event.model.mapper.EventMapper;
 import ru.practicum.event.repository.EventRepository;
@@ -538,18 +539,18 @@ public class EventServiceImpl implements EventService {
     @Override
     public List<EventShortDto> getRecommendationsForUser(long userId, int maxResults) {
         validateUserExists(userId);
-        List<ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto> recommendations =
+        List<RecommendedEventProto> recommendations =
                 statsClient.getRecommendationsForUser(userId, maxResults);
         Set<Long> eventIds = recommendations.stream()
-                .map(ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto::getEventId)
+                .map(RecommendedEventProto::getEventId)
                 .collect(Collectors.toSet());
         if (eventIds.isEmpty()) {
             return List.of();
         }
         Map<Long, Double> scores = recommendations.stream()
                 .collect(Collectors.toMap(
-                        ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto::getEventId,
-                        ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto::getScore,
+                        RecommendedEventProto::getEventId,
+                        RecommendedEventProto::getScore,
                         (left, right) -> left
                 ));
         List<Event> events = eventJpaRepository.findByIdIn(eventIds);

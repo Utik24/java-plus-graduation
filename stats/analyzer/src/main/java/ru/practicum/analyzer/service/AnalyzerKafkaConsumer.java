@@ -15,8 +15,7 @@ import ru.practicum.ewm.stats.avro.UserActionAvro;
 
 @Component
 public class AnalyzerKafkaConsumer {
-    private static final String USER_ACTIONS_TOPIC = "stats.user-actions.v1";
-    private static final String EVENTS_SIMILARITY_TOPIC = "stats.events-similarity.v1";
+
 
     private final UserEventInteractionRepository interactionRepository;
     private final EventSimilarityRepository similarityRepository;
@@ -27,7 +26,8 @@ public class AnalyzerKafkaConsumer {
         this.similarityRepository = similarityRepository;
     }
 
-    @KafkaListener(topics = USER_ACTIONS_TOPIC, containerFactory = "userActionKafkaListenerContainerFactory")
+    @KafkaListener(topics = "${app.kafka.topics.user-actions}",
+            containerFactory = "userActionKafkaListenerContainerFactory")
     @Transactional
     public void handleUserAction(UserActionAvro action) {
         if (action == null) {
@@ -48,7 +48,8 @@ public class AnalyzerKafkaConsumer {
         interactionRepository.save(entity);
     }
 
-    @KafkaListener(topics = EVENTS_SIMILARITY_TOPIC, containerFactory = "eventSimilarityKafkaListenerContainerFactory")
+    @KafkaListener(topics = "${app.kafka.topics.events-similarity}",
+            containerFactory = "eventSimilarityKafkaListenerContainerFactory")
     @Transactional
     public void handleSimilarity(EventSimilarityAvro similarity) {
         if (similarity == null) {

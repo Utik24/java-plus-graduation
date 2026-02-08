@@ -9,17 +9,25 @@ import ru.practicum.ewm.stats.avro.UserActionAvro;
 import ru.practicum.ewm.stats.proto.collector.ActionTypeProto;
 import ru.practicum.ewm.stats.proto.collector.UserActionControllerGrpc;
 import ru.practicum.ewm.stats.proto.collector.UserActionProto;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Instant;
 
 @GrpcService
 public class UserActionGrpcService extends UserActionControllerGrpc.UserActionControllerImplBase {
-    private static final String USER_ACTIONS_TOPIC = "stats.user-actions.v1";
+    private static final Logger log = LoggerFactory.getLogger(UserActionGrpcService.class);
 
     private final KafkaTemplate<Long, UserActionAvro> kafkaTemplate;
+    private final String userActionsTopic;
 
-    public UserActionGrpcService(KafkaTemplate<Long, UserActionAvro> kafkaTemplate) {
+    public UserActionGrpcService(
+            KafkaTemplate<Long, UserActionAvro> kafkaTemplate,
+            @Value("${app.kafka.topics.user-actions}") String userActionsTopic
+    ) {
         this.kafkaTemplate = kafkaTemplate;
+        this.userActionsTopic = userActionsTopic;
     }
 
     @Override
@@ -30,7 +38,12 @@ public class UserActionGrpcService extends UserActionControllerGrpc.UserActionCo
                 mapAction(request.getActionType()),
                 Instant.ofEpochMilli(request.getTimestamp().getSeconds() * 1000 + request.getTimestamp().getNanos() / 1_000_000)
         );
-        kafkaTemplate.send(USER_ACTIONS_TOPIC, action.userId(), action);
+        kafkaTemplate.send(userActionsTopic, action.userId(), action)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        log.error("Ошибка отправки действия пользователя в Kafka", ex);
+                    }
+                });
         responseObserver.onNext(Empty.getDefaultInstance());
         responseObserver.onCompleted();
     }
