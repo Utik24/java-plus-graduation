@@ -1,6 +1,5 @@
 package ru.practicum.event.service;
 
-import jakarta.servlet.http.HttpServletRequest;
 
 import ru.practicum.event.model.Event;
 import ru.practicum.event.model.EventParam;
@@ -15,8 +14,7 @@ public interface EventService {
 
     List<EventFullDto> getEventsAdmin(EventParam p);
 
-    EventFullDto getEvent(int eventId,
-                          HttpServletRequest request);
+    EventFullDto getEvent(int eventId, long userId);
 
     EventFullDto create(NewEventDto newEventDto, int userId);
 
@@ -33,5 +31,9 @@ public interface EventService {
     EventFullDto updateAdminEvent(long eventId, UpdateEventAdminRequest adminRequest);
 
     Set<Event> getEventsByIds(Set<Long> eventIds);
+
+    List<EventShortDto> getRecommendationsForUser(long userId, int maxResults);
+
+    void likeEvent(long userId, long eventId);
 
 }

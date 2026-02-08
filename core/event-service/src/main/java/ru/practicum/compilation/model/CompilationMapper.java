@@ -16,7 +16,7 @@ public class CompilationMapper {
     }
 
     public static CompilationDto toDto(Compilation compilation,
-                                       Map<Long, Long> idViewsMap,
+                                       Map<Long, Double> idRatingsMap,
                                        Map<Long, UserShortDto> initiators) {
         CompilationDto compilationDto = new CompilationDto();
         compilationDto.setId(compilation.getId());
@@ -30,7 +30,7 @@ public class CompilationMapper {
 
         compilationDto.setEvents(compilation.getEvents().stream()
                 .map(e -> EventMapper.toShortDto(e, initiators.get(e.getInitiatorId()),
-                        idViewsMap.getOrDefault(e.getId(), 0L)))
+                        idRatingsMap.getOrDefault(e.getId(), 0.0)))
                 .collect(Collectors.toSet()));
         return compilationDto;
     }
